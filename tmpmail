@@ -5,7 +5,7 @@
 # Dependencies: jq, curl, w3m
 #
 
-export LC_CTYPE=C 
+export LC_CTYPE=C
 export LANG=C
 
 VERSION=1.0.0
@@ -24,7 +24,7 @@ RAW_TEXT=false
 TMPMAIL_DIR="/tmp/tmpmail/"
 
 # TMPMAIL_EMAIL_ADDRESS is where we store the temporary email address
-# that gets generated. This prevents the user from providing 
+# that gets generated. This prevents the user from providing
 # the email address everytime they run tmpmail
 TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
 TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
@@ -51,9 +51,9 @@ generate_email_address(){
     # There are 2 ways which this function is called in this script.
     #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
     #  [2] The user runs 'tmpmail' to check the inbox , but /tmp/tmpmail/email_address
-    #      is empty or nonexistant. Therefore a new email gets automatically 
-    #      generated before showing the inbox. But of course the inbox will 
-    #      be empty as the newly generated email address has not been 
+    #      is empty or nonexistant. Therefore a new email gets automatically
+    #      generated before showing the inbox. But of course the inbox will
+    #      be empty as the newly generated email address has not been
     #      sent any emails.
     #
     # When the function 'generate_email()' is called with the arguement
@@ -75,7 +75,7 @@ generate_email_address(){
     # giving us a text which only contains lower case letters form A to Z. We then take
     # the first 10 characters, which will be the username of the email address
     USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
-    
+
     # This is an array of the valid TLDS which 1secmail provides.
     TLDS=(com net org)
 
@@ -137,15 +137,15 @@ list_emails(){
     # Since we need to go through all the data, we need to tell our for loop
     # to loop from 1 to X, where X is legnth of the $DATA which contains all
     # the emails.
-    # 
+    #
     # Normally to loop from 1 to 5, we would use shell expansion and write:
-    #   for index in {1..5}; do 
+    #   for index in {1..5}; do
     #       do_something
     #   done
     #
     # But we a minor issue. We dont know what the final number is, and we are not allowed
     # use to variables in shell expansions like this:
-    #   {1..$X} 
+    #   {1..$X}
     #
     # where $X is the length of the $DATA.
     #
@@ -161,9 +161,9 @@ list_emails(){
     #
     # We can then put those results into the foor loop
     for index in $(seq 1 "$DATA_LENGTH"); do
-	# Since arrays in JSON data start at 0, we must subtract
-	# the value of $index by 1 so that we dont miss one of the
-	# emails in the array
+    # Since arrays in JSON data start at 0, we must subtract
+    # the value of $index by 1 so that we dont miss one of the
+    # emails in the array
         MAIL_DATA=$(jq -r ".[$index-1]" <<< "$DATA")
 
         ID=$(jq -r ".id" <<< "$MAIL_DATA")
@@ -221,7 +221,7 @@ EOF
     # If the '--text' flag is used, then use 'w3m' to convert the HTML of
     # the email to pure text by removing all the HTML tags
     [ "$RAW_TEXT" = true ] && w3m -dump "$TMPMAIL_HTML_EMAIL" && exit
-    
+
     # Open up the HTML file using $BROWSER. By default,
     # this will be 'w3m'.
     $BROWSER "$TMPMAIL_HTML_EMAIL"
@@ -254,10 +254,10 @@ main(){
     # Create the $TMPMAIL_DIR directory and dont throw any errors
     # if it already exists
     mkdir -p "$TMPMAIL_DIR"
-    
+
     # Get the email address and save the value to the EMAIL_ADDRESS variable
     EMAIL_ADDRESS="$(get_email_address)"
-    
+
     # ${VAR#PATTERN} Removes shortest match of pattern from start of a string.
     # In this case, it takes the EMAIL_ADDRESS and removed everything after
     # the '@' symbol which gives us the username.
@@ -270,20 +270,20 @@ main(){
 
     # If no arguments are provided just the emails
     [[ $# -eq 0 ]] && list_emails && exit
-    
+
     while [[ "$1" ]]; do
         case "$1" in
             --help|-h) usage && exit ;;
             --generate|-g) generate_email_address true && exit;;
             --browser|-b) BROWSER="$2" ;;
-	    --text|-t) RAW_TEXT=true ;;
+            --text|-t) RAW_TEXT=true ;;
             --version) echo "$VERSION" && exit;;
             --recent|-r) view_recent_email && exit;;
-	    # If the user provides number as an argument,
-	    # assume its the ID of an email and try getting
-	    # the email that belongs to the ID
+            # If the user provides number as an argument,
+            # assume its the ID of an email and try getting
+            # the email that belongs to the ID
             *[0-9]*) view_email "$1" && exit;;
-	    -*) echo "error: option $1 does not exist"
+            -*) echo "error: option $1 does not exist"
         esac
         shift
     done
