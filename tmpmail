@@ -125,7 +125,7 @@ list_emails(){
 
     # This is where we store all of our emails, which is then
     # displayed using 'column'
-    INBOX=""
+    INBOX=()
 
     # This for loop goes through each mail that have been received.
     #
@@ -165,20 +165,15 @@ list_emails(){
         FROM=$(jq -r ".from" <<< "$MAIL_DATA")
         SUBJECT=$(jq -r ".subject" <<< "$MAIL_DATA")
 
-	# The '||' are used as a divideder for 'column'. 'column' will use this divider as
-	# a point of reference to create the division. By default 'column' uses a blank space
-	# but that would not work in our case as the email subject could have multiple white spaces
-	# and 'column' would split the words that are seperated by white space, in different columns.
-	#
-	# Yes, there a double quote all by it self on the line under this one.
-	# This serves as a new line. So that the 'column' command works properly.
-        # I know I could have used '\n' but 'column' does not intepret it as a new line.
-        INBOX+="$ID ||$FROM ||$SUBJECT
-"
+    # The '||' are used as a divideder for 'column'. 'column' will use this divider as
+    # a point of reference to create the division. By default 'column' uses a blank space
+    # but that would not work in our case as the email subject could have multiple white spaces
+    # and 'column' would split the words that are seperated by white space, in different columns.
+        INBOX+=("$ID ||$FROM ||$SUBJECT")
     done
 
     # Show the emails cleanly
-    column -t -s "||" <<< "$INBOX" 
+    column -t -s "||" < <(printf '%s\n' "${INBOX[@]}")
 }
 
 
