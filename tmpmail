@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+#
+# by Siddharth Dushantha 2020
+#
+# Dependencies: jq, curl, w3m
+#
+
+export LC_CTYPE=C 
+export LANG=C
+
+VERSION=1.0.0
+
+# By default 'tmpmail' uses 'w3m' as it's web browser to render
+# the HTML of the email
+BROWSER="w3m"
+
+# If the value is set to 'true' tmpmail will convert the HTML email
+# to raw text and send that to stdout
+RAW_TEXT=false
+
+# Everything related to 'tmpmail' will be stored in /tmp/tmpmail
+# so that the old emails and email addresses get cleared after
+# restarting the computer
+TMPMAIL_DIR="/tmp/tmpmail/"
+
+# TMPMAIL_EMAIL_ADDRESS is where we store the temporary email address
+# that gets generated. This prevents the user from providing 
+# the email address everytime they run tmpmail
+TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
+TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
+
+
+usage(){
+    # Using 'cat << EOF' we can easily output a multiline text. This is much
+    # better than using 'echo' for each line or using '\n' to create a new line.
+    cat << EOF
+usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
+
+optional arguments:
+-h, --help           Show this help message
+    --version        Print version
+-g, --generate       Generate a new email address
+-r, --recent         View the most recent email
+-t, --text           View the email as raw text, where all the HTML tags are removed
+-b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
+EOF
+}
+
+
+generate_email_address(){
+    # There are 2 ways which this function is called in this script.
+    #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
+    #  [2] The user runs 'tmpmail' to check the inbox , but /tmp/tmpmail/email_address
+    #      is empty or nonexistant. Therefore a new email gets automatically 
+    #      generated before showing the inbox. But of course the inbox will 
+    #      be empty as the newly generated email address has not been 
+    #      sent any emails.
+    #
+    # When the function 'generate_email()' is called with the arguement
+    # 'true', it means that the function was called because the user
+    # ran 'tmpmail --generate'.
+    #
+    # We need this variable so we can know whether or not we need to show the user
+    # what the email was. <-- More about this can be found further down in this function.
+    EXTERNALLY=${1:-false}
+
+    # Generate a random email address.
+    # This function is called whenever the user wants to generate a new email
+    # address by running 'tmpmail --generate' or when the user runs 'tmpmail'
+    # but /tmp/tmpmail/email_address is empty or nonexistent.
+    #
+    # We create a random username by taking the first 10 lines from /dev/random
+    # and delete all the characters which are *not* lower case letters from A to Z.
+    # So charcters such as dashes, periods, underscore, and numbers are all deleted,
+    # giving us a text which only contains lower case letters form A to Z. We then take
+    # the first 10 characters, which will be the username of the email address
+    USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+    
+    # This is an array of the valid TLDS which 1secmail provides.
+    TLDS=(com net org)
+
+    # Randomly pick one of the TLDS mentiond above.
+    # This is done by first echoing all the TLDS into 'tr' which then
+    # replaces the white spaces with a new line. This is done because we use 
+    # 'sort' to put the TLDS in a random order, but 'sort' requires the TLDS to
+    # be on seperate lines. After the randomizing is done we take the first line 
+    # which is one of the TLDS
+    TLD=$(echo "${TLDS[@]}" | tr " " "\n" | sort -R | head -n 1)
+
+    # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
+    # so that it can be whenever 'tmpmail' is run
+    echo "$USERNAME@1secmail.$TLD" > "$TMPMAIL_EMAIL_ADDRESS"
+
+    # If this function was called because the user wanted to generate a new
+    # email address, show them the email address
+    [ "$EXTERNALLY" = true ] && cat "$TMPMAIL_EMAIL_ADDRESS"
+}
+
+
+get_email_address(){
+    # This function is only called once and that is when this script
+    # get executed. The output of this function gets stored in $EMAIL_ADDRESS
+    #
+    # If the file that contains the email address is empty,
+    # that means we do not have an email address, so generate one.
+    [ ! -s "$TMPMAIL_EMAIL_ADDRESS" ] && generate_email_address
+
+    # Output the email address by getting the first line of $TMPMAIL_EMAIL
+    head -n 1 "$TMPMAIL_EMAIL_ADDRESS"
+}
+
+
+list_emails(){
+    # List all the received emails in a nicely formatted order
+    #
+    # Fetch the email data using 1secmail's API
+    DATA=$(curl -sL "http://1secmail.$TLD/api/v1/?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
+
+    # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
+    # the email address has gotten any emails
+    DATA_LENGTH=$(jq length <<< "$DATA")
+
+    # We are showing what email address is currently being used
+    # in case the user has forgotten what the email address was.
+    echo -e "[ Inbox for $EMAIL_ADDRESS ]\n"
+
+    # If the length of the data we got is 0, that means the email address
+    # has not received any emails yet.
+    [ "$DATA_LENGTH" -eq 0 ] && echo "No new mail" && exit
+
+    # This is where we store all of our emails, which is then
+    # displayed using 'column'
+    INBOX=""
+
+    # This for loop goes through each mail that have been received.
+    #
+    # Since we need to go through all the data, we need to tell our for loop
+    # to loop from 1 to X, where X is legnth of the $DATA which contains all
+    # the emails.
+    # 
+    # Normally to loop from 1 to 5, we would use shell expansion and write:
+    #   for index in {1..5}; do 
+    #       do_something
+    #   done
+    #
+    # But we a minor issue. We dont know what the final number is, and we are not allowed
+    # use to variables in shell expansions like this:
+    #   {1..$X} 
+    #
+    # where $X is the length of the $DATA.
+    #
+    # To fix this issue, we can use 'seq' which will allow us to create a sequence
+    # from X to Y.
+    # Example:
+    #  $ seq 1 5
+    #  1
+    #  2
+    #  3
+    #  4
+    #  5
+    #
+    # We can then put those results into the foor loop
+    for index in $(seq 1 "$DATA_LENGTH"); do
+	# Since arrays in JSON data start at 0, we must subtract
+	# the value of $index by 1 so that we dont miss one of the
+	# emails in the array
+        MAIL_DATA=$(jq -r ".[$index-1]" <<< "$DATA")
+
+        ID=$(jq -r ".id" <<< "$MAIL_DATA")
+        FROM=$(jq -r ".from" <<< "$MAIL_DATA")
+        SUBJECT=$(jq -r ".subject" <<< "$MAIL_DATA")
+
+	# The '||' are used as a divideder for 'column'. 'column' will use this divider as
+	# a point of reference to create the division. By default 'column' uses a blank space
+	# but that would not work in our case as the email subject could have multiple white spaces
+	# and 'column' would split the words that are seperated by white space, in different columns.
+	#
+	# Yes, there a double quote all by it self on the line under this one.
+	# This serves as a new line. So that the 'column' command works properly.
+        # I know I could have used '\n' but 'column' does not intepret it as a new line.
+        INBOX+="$ID ||$FROM ||$SUBJECT
+"
+    done
+
+    # Show the emails cleanly
+    column -t -s "||" <<< "$INBOX" 
+}
+
+
+view_email(){
+    # View an email by providing it's ID
+    #
+    # The first argument provided to this function will be the ID of the email
+    # that has been received
+    EMAIL_ID="$1"
+    DATA=$(curl -sL "http://www.1secmail.$TLD/api/v1/?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
+
+    # After the data is retrieved using the API, we have to check if we got any emails.
+    # Luckly 1secmail's API is not complicated and returns 'Message not found' as plain text
+    # if our email address as not received any emails.
+    # If we the error message from the API just quit because there is nothing to do
+    [[ "$DATA" == "Message not found" ]] && echo "Message not found" && exit 1
+
+    # We pass the $DATA to 'jq' which extracts the values
+    FROM=$(jq -r ".from" <<< "$DATA")
+    SUBJECT=$(jq -r ".subject" <<< "$DATA")
+    HTML_BODY=$(jq -r ".htmlBody" <<< "$DATA")
+
+    # Create the HTML with all the information that is relevant and then
+    # assigning that HTML to the variable HTML_MAIL. This is the best method
+    # to create a multiline variable
+    read -r -d '' HTML_MAIL << EOF
+<pre><b>To: </b>$EMAIL_ADDRESS
+<b>From: </b>$FROM
+<b>Subject: </b>$SUBJECT</pre>
+$HTML_BODY
+EOF
+    # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
+    echo "$HTML_MAIL" > "$TMPMAIL_HTML_EMAIL"
+
+    # If the '--text' flag is used, then use 'w3m' to convert the HTML of
+    # the email to pure text by removing all the HTML tags
+    [ "$RAW_TEXT" = true ] && w3m -dump "$TMPMAIL_HTML_EMAIL" && exit
+    
+    # Open up the HTML file using $BROWSER. By default,
+    # this will be 'w3m'.
+    $BROWSER "$TMPMAIL_HTML_EMAIL"
+
+}
+
+
+view_recent_email(){
+    # View the most recent email.
+    #
+    # This is done by listing all the received email like you
+    # normally see on the terminal when running 'tmpmail'.
+    # We then use 'awk' to grab the ID of the most recent
+    # email, which the first line.
+    MAIL_ID=$(list_emails | awk 'NR==3{print $1}')
+    view_email "$MAIL_ID"
+}
+
+
+main(){
+    # Iterate of the array of dependencies and check if the user has them installed
+    dependencies=(jq w3m curl)
+    for dependency in "${dependencies[@]}"; do
+        type -p "$dependency" &>/dev/null || {
+        echo "error: Could not find '${dependency}', is it installed?" >&2
+        exit 1
+        }
+    done
+
+    # Create the $TMPMAIL_DIR directory and dont throw any errors
+    # if it already exists
+    mkdir -p "$TMPMAIL_DIR"
+    
+    # Get the email address and save the value to the EMAIL_ADDRESS variable
+    EMAIL_ADDRESS="$(get_email_address)"
+    
+    # ${VAR#PATTERN} Removes shortest match of pattern from start of a string.
+    # In this case, it takes the EMAIL_ADDRESS and removed everything after
+    # the '@' symbol which gives us the username.
+    USERNAME=${EMAIL_ADDRESS%@*}
+
+    # ${VAR%PATTERN} Remove shortest match of pattern from end of a string.
+    # In this case, it takes the EMAIL_ADDRESS and removes everything until the
+    # period '.' which gives us the TLD
+    TLD=${EMAIL_ADDRESS#*.}
+
+    # If no arguments are provided just the emails
+    [[ $# -eq 0 ]] && list_emails && exit
+    
+    while [[ "$1" ]]; do
+        case "$1" in
+            --help|-h) usage && exit ;;
+            --generate|-g) generate_email_address true && exit;;
+            --browser|-b) BROWSER="$2" ;;
+	    --text|-t) RAW_TEXT=true ;;
+            --version) echo "$VERSION" && exit;;
+            --recent|-r) view_recent_email && exit;;
+	    # If the user provides number as an argument,
+	    # assume its the ID of an email and try getting
+	    # the email that belongs to the ID
+            *[0-9]*) view_email "$1" && exit;;
+	    -*) echo "error: option $1 does not exist"
+        esac
+        shift
+    done
+}
+
+
+main "$@"
