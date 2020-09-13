@@ -22,15 +22,15 @@ use the `--browser` argument followed by the command needed to launch the web br
 
 ## Usage
 ```console
-$ tmpmail --help
-usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] [ID]
+usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
 
 optional arguments:
 -h, --help           Show this help message
     --version        Print version
 -g, --generate       Generate a new email address
--r, --recent         View the most recent mail
--b, --browser        Change the browser that is used to render the HTML (default: w3m)
+-r, --recent         View the most recent email
+-t, --text           View the email as raw text, where all the HTML tags are removed
+-b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
 ```
 
 ### Examples
