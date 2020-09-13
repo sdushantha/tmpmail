@@ -80,12 +80,7 @@ generate_email_address(){
     TLDS=(com net org)
 
     # Randomly pick one of the TLDS mentiond above.
-    # This is done by first echoing all the TLDS into 'tr' which then
-    # replaces the white spaces with a new line. This is done because we use 
-    # 'sort' to put the TLDS in a random order, but 'sort' requires the TLDS to
-    # be on seperate lines. After the randomizing is done we take the first line 
-    # which is one of the TLDS
-    TLD=$(echo "${TLDS[@]}" | tr " " "\n" | sort -R | head -n 1)
+    TLD=${TLDS[$RANDOM % ${#TLDS[@]} ]}
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
     # so that it can be whenever 'tmpmail' is run
