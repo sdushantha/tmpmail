@@ -5,6 +5,7 @@
 # Dependencies: jq, curl, w3m
 #
 
+export LC_ALL=C
 export LC_CTYPE=C 
 export LANG=C
 
