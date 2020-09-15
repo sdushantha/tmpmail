@@ -29,11 +29,10 @@ TMPMAIL_DIR="/tmp/tmpmail"
 TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
 TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
 
-
-usage(){
+usage() {
     # Using 'cat << EOF' we can easily output a multiline text. This is much
     # better than using 'echo' for each line or using '\n' to create a new line.
-    cat << EOF
+    cat <<EOF
 usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
 
 optional arguments:
@@ -46,12 +45,11 @@ optional arguments:
 EOF
 }
 
-has(){
+has() {
     command -v "$1" >/dev/null 2>&1
 }
 
-
-generate_email_address(){
+generate_email_address() {
     # There are 2 ways which this function is called in this script.
     #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
     #  [2] The user runs 'tmpmail' to check the inbox , but /tmp/tmpmail/email_address
@@ -84,19 +82,18 @@ generate_email_address(){
     TLDS=(com net org)
 
     # Randomly pick one of the TLDS mentiond above.
-    TLD=${TLDS[$RANDOM % ${#TLDS[@]} ]}
+    TLD=${TLDS[$RANDOM % ${#TLDS[@]}]}
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
     # so that it can be whenever 'tmpmail' is run
-    echo "$USERNAME@1secmail.$TLD" > "$TMPMAIL_EMAIL_ADDRESS"
+    echo "$USERNAME@1secmail.$TLD" >"$TMPMAIL_EMAIL_ADDRESS"
 
     # If this function was called because the user wanted to generate a new
     # email address, show them the email address
     [ "$EXTERNALLY" = true ] && cat "$TMPMAIL_EMAIL_ADDRESS"
 }
 
-
-get_email_address(){
+get_email_address() {
     # This function is only called once and that is when this script
     # get executed. The output of this function gets stored in $EMAIL_ADDRESS
     #
@@ -108,8 +105,7 @@ get_email_address(){
     head -n 1 "$TMPMAIL_EMAIL_ADDRESS"
 }
 
-
-list_emails(){
+list_emails() {
     # List all the received emails in a nicely formatted order
     #
     # Fetch the email data using 1secmail's API
@@ -117,7 +113,7 @@ list_emails(){
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
-    DATA_LENGTH=$(jq length <<< "$DATA")
+    DATA_LENGTH=$(jq length <<<"$DATA")
 
     # We are showing what email address is currently being used
     # in case the user has forgotten what the email address was.
@@ -160,19 +156,19 @@ list_emails(){
     #
     # We can then put those results into the foor loop
     for index in $(seq 1 "$DATA_LENGTH"); do
-    # Since arrays in JSON data start at 0, we must subtract
-    # the value of $index by 1 so that we dont miss one of the
-    # emails in the array
-        MAIL_DATA=$(jq -r ".[$index-1]" <<< "$DATA")
+        # Since arrays in JSON data start at 0, we must subtract
+        # the value of $index by 1 so that we dont miss one of the
+        # emails in the array
+        MAIL_DATA=$(jq -r ".[$index-1]" <<<"$DATA")
 
-        ID=$(jq -r ".id" <<< "$MAIL_DATA")
-        FROM=$(jq -r ".from" <<< "$MAIL_DATA")
-        SUBJECT=$(jq -r ".subject" <<< "$MAIL_DATA")
+        ID=$(jq -r ".id" <<<"$MAIL_DATA")
+        FROM=$(jq -r ".from" <<<"$MAIL_DATA")
+        SUBJECT=$(jq -r ".subject" <<<"$MAIL_DATA")
 
-    # The '||' are used as a divideder for 'column'. 'column' will use this divider as
-    # a point of reference to create the division. By default 'column' uses a blank space
-    # but that would not work in our case as the email subject could have multiple white spaces
-    # and 'column' would split the words that are seperated by white space, in different columns.
+        # The '||' are used as a divideder for 'column'. 'column' will use this divider as
+        # a point of reference to create the division. By default 'column' uses a blank space
+        # but that would not work in our case as the email subject could have multiple white spaces
+        # and 'column' would split the words that are seperated by white space, in different columns.
         INBOX+=("$ID ||$FROM ||$SUBJECT")
     done
 
@@ -180,8 +176,7 @@ list_emails(){
     column -t -s "||" < <(printf '%s\n' "${INBOX[@]}")
 }
 
-
-view_email(){
+view_email() {
     # View an email by providing it's ID
     #
     # The first argument provided to this function will be the ID of the email
@@ -196,21 +191,21 @@ view_email(){
     [[ "$DATA" == "Message not found" ]] && echo "Message not found" && exit 1
 
     # We pass the $DATA to 'jq' which extracts the values
-    FROM=$(jq -r ".from" <<< "$DATA")
-    SUBJECT=$(jq -r ".subject" <<< "$DATA")
-    HTML_BODY=$(jq -r ".htmlBody" <<< "$DATA")
+    FROM=$(jq -r ".from" <<<"$DATA")
+    SUBJECT=$(jq -r ".subject" <<<"$DATA")
+    HTML_BODY=$(jq -r ".htmlBody" <<<"$DATA")
 
     # Create the HTML with all the information that is relevant and then
     # assigning that HTML to the variable HTML_MAIL. This is the best method
     # to create a multiline variable
-    read -r -d '' HTML_MAIL << EOF
+    read -r -d '' HTML_MAIL <<EOF
 <pre><b>To: </b>$EMAIL_ADDRESS
 <b>From: </b>$FROM
 <b>Subject: </b>$SUBJECT</pre>
 $HTML_BODY
 EOF
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
-    echo "$HTML_MAIL" > "$TMPMAIL_HTML_EMAIL"
+    echo "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
 
     # If the '--text' flag is used, then use 'w3m' to convert the HTML of
     # the email to pure text by removing all the HTML tags
@@ -222,8 +217,7 @@ EOF
 
 }
 
-
-view_recent_email(){
+view_recent_email() {
     # View the most recent email.
     #
     # This is done by listing all the received email like you
@@ -234,8 +228,7 @@ view_recent_email(){
     view_email "$MAIL_ID"
 }
 
-
-main(){
+main() {
     # Iterate of the array of dependencies and check if the user has them installed
     dependencies=(jq w3m curl awk)
     for dependency in "${dependencies[@]}"; do
@@ -267,21 +260,22 @@ main(){
 
     while [[ "$1" ]]; do
         case "$1" in
-            --help|-h) usage && exit ;;
-            --generate|-g) generate_email_address true && exit;;
-            --browser|-b) BROWSER="$2" ;;
-            --text|-t) RAW_TEXT=true ;;
-            --version) echo "$VERSION" && exit;;
-            --recent|-r) view_recent_email && exit;;
-            # If the user provides number as an argument,
-            # assume its the ID of an email and try getting
-            # the email that belongs to the ID
-            *[0-9]*) view_email "$1" && exit;;
-            -*) echo "error: option $1 does not exist"
+            --help | -h) usage && exit ;;
+            --generate | -g) generate_email_address true && exit ;;
+            --browser | -b) BROWSER="$2" ;;
+            --text | -t) RAW_TEXT=true ;;
+            --version) echo "$VERSION" && exit ;;
+            --recent | -r) view_recent_email && exit ;;
+            *[0-9]*)
+                # If the user provides number as an argument,
+                # assume its the ID of an email and try getting
+                # the email that belongs to the ID
+                view_email "$1" && exit
+                ;;
+            -*) echo "error: option $1 does not exist" ;;
         esac
         shift
     done
 }
-
 
 main "$@"
