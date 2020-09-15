@@ -21,6 +21,14 @@ use the `--browser` argument followed by the command needed to launch the web br
 - [`jq`](https://github.com/stedolan/jq)
 - `awk`
 
+### On Ubuntu
+
+Solve above dependencies with the following command
+
+```bash
+sudo apt install w3m jq curl gawk
+```
+
 ## Installation
 ### Install locally
 
