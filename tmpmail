@@ -243,7 +243,7 @@ view_recent_email(){
 
 main(){
     # Iterate of the array of dependencies and check if the user has them installed
-    dependencies=(jq w3m curl)
+    dependencies=(jq w3m curl awk)
     for dependency in "${dependencies[@]}"; do
         type -p "$dependency" &>/dev/null || {
         echo "error: Could not find '${dependency}', is it installed?" >&2
