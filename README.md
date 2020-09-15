@@ -15,7 +15,7 @@ use the `--browser` argument followed by the command needed to launch the web br
 <br>
 <br>
 
-## Requirements
+## Dependencies
 - `w3m`
 - `curl`
 - [`jq`](https://github.com/stedolan/jq)
