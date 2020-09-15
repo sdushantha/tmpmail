@@ -114,7 +114,7 @@ list_emails(){
     # List all the received emails in a nicely formatted order
     #
     # Fetch the email data using 1secmail's API
-    DATA=$(curl -sL "https://1secmail.$TLD/api/v1/?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
+    DATA=$(curl -sL "http://1secmail.$TLD/api/v1/?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
@@ -193,7 +193,7 @@ view_email(){
     # The first argument provided to this function will be the ID of the email
     # that has been received
     EMAIL_ID="$1"
-    DATA=$(curl -sL "https://www.1secmail.$TLD/api/v1/?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
+    DATA=$(curl -sL "http://www.1secmail.$TLD/api/v1/?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
 
     # After the data is retrieved using the API, we have to check if we got any emails.
     # Luckly 1secmail's API is not complicated and returns 'Message not found' as plain text
