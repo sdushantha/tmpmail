@@ -15,14 +15,33 @@ use the `--browser` argument followed by the command needed to launch the web br
 <br>
 <br>
 
-## Requirements
+## Dependencies
 - `w3m`
 - `curl`
 - [`jq`](https://github.com/stedolan/jq)
+- `awk`
+
+## Installation
+### Install locally
+
+```bash
+# Download the tmpmail file and make it executeable
+$ curl -L "https://git.io/tmpmail" > tmpmail && chmod +x tmpmail
+
+# Then move it somewhere in your $PATH. Here is an example:
+$ mv tmpmail ~/bin/
+```
+
+### AUR
+`tmpmail` is available on the [AUR](https://aur.archlinux.org/packages/tmpmail-git/), which is currently being maintained by [Benjamin Bädorf](https://github.com/b12f)
+
+```bash
+$ yay -S tmpmail-git
+```
 
 ## Usage
 ```console
-usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
+usage: tmpmail [-h] [--generate] [--text] [--browser BROWSER] [--recent] ID
 
 optional arguments:
 -h, --help           Show this help message
