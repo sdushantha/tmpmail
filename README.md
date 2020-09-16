@@ -26,7 +26,7 @@ use the `--browser` argument followed by the command needed to launch the web br
 Solve above dependencies with the following command
 
 ```bash
-sudo apt install w3m jq curl gawk
+sudo apt install w3m jq curl
 ```
 
 ## Installation
