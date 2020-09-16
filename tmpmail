@@ -46,6 +46,10 @@ optional arguments:
 EOF
 }
 
+has(){
+    command -v "$1" >/dev/null 2>&1
+}
+
 
 generate_email_address(){
     # There are 2 ways which this function is called in this script.
@@ -235,10 +239,10 @@ main(){
     # Iterate of the array of dependencies and check if the user has them installed
     dependencies=(jq w3m curl awk)
     for dependency in "${dependencies[@]}"; do
-        type -p "$dependency" &>/dev/null || {
-        echo "error: Could not find '${dependency}', is it installed?" >&2
-        exit 1
-        }
+        if ! has "$dependency"; then
+            echo "error: Could not find '${dependency}', is it installed?" >&2
+            exit 1
+        fi
     done
 
     # Create the $TMPMAIL_DIR directory and dont throw any errors
