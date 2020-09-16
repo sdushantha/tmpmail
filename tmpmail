@@ -21,7 +21,7 @@ RAW_TEXT=false
 # Everything related to 'tmpmail' will be stored in /tmp/tmpmail
 # so that the old emails and email addresses get cleared after
 # restarting the computer
-TMPMAIL_DIR="/tmp/tmpmail/"
+TMPMAIL_DIR="/tmp/tmpmail"
 
 # TMPMAIL_EMAIL_ADDRESS is where we store the temporary email address
 # that gets generated. This prevents the user from providing
