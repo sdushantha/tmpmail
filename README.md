@@ -5,7 +5,7 @@
 
 <img src="images/demo.gif" align="right"> `tmpmail` tmpmail is a command line utility that allows you to create a temporary email address
 and receive emails to the temporary email address. It uses 1secmail's [API](https://www.1secmail.com/api/)
-to receive the emails.
+to receive emails.
 
 By default `w3m` is used to render the HTML emails on the terminal.
 But if you prefer another text based web browser or would rather view the email in a GUI web browser such as Firefox, simply
@@ -25,7 +25,7 @@ use the `--browser` argument followed by the command needed to launch the web br
 ### Install locally
 
 ```bash
-# Download the tmpmail file and make it executeable
+# Download the tmpmail file and make it executable
 $ curl -L "https://git.io/tmpmail" > tmpmail && chmod +x tmpmail
 
 # Then move it somewhere in your $PATH. Here is an example:
