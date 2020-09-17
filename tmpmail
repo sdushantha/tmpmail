@@ -74,8 +74,19 @@ generate_email_address(){
     # and delete all the characters which are *not* lower case letters from A to Z.
     # So charcters such as dashes, periods, underscore, and numbers are all deleted,
     # giving us a text which only contains lower case letters form A to Z. We then take
-    # the first 10 characters, which will be the username of the email address
-    USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+    # the first 6 characters, which will be the username of the email address
+     echo "Do you want custom mail name(y/n)"
+    read OPTION
+    if  [ $OPTION == 'y' ] || [ $OPTION == 'Y' ] ;
+    then
+       echo "Enter your custom mail name:"
+       read NAME
+       USERNAME="$NAME"
+
+    else
+       echo "...Generating random email......"
+       USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+    fi
     
     # This is an array of the valid TLDS which 1secmail provides.
     TLDS=(com net org)
