@@ -85,7 +85,7 @@ generate_email_address(){
 
     else
        echo "...Generating random email......"
-       USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+       USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-6)
     fi
     
     # This is an array of the valid TLDS which 1secmail provides.
