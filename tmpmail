@@ -194,6 +194,9 @@ view_email() {
     FROM=$(jq -r ".from" <<<"$DATA")
     SUBJECT=$(jq -r ".subject" <<<"$DATA")
     HTML_BODY=$(jq -r ".htmlBody" <<<"$DATA")
+    if [ -z "$HTML_BODY"]; then
+         HTML_BODY=$(jq -r ".textBody" <<<"$DATA")
+     fi
 
     # Create the HTML with all the information that is relevant and then
     # assigning that HTML to the variable HTML_MAIL. This is the best method
