@@ -3,7 +3,7 @@
 </h1>
 <p align="center"> A temporary email right from your terminal</p><br>
 
-<img src="images/demo.gif" align="right"> `tmpmail` tmpmail is a command line utility that allows you to create a temporary email address
+<img src="images/demo.gif" align="right"> `tmpmail` is a command line utility that allows you to create a temporary email address
 and receive emails to the temporary email address. It uses 1secmail's [API](https://www.1secmail.com/api/)
 to receive emails.
 
