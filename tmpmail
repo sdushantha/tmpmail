@@ -27,6 +27,11 @@ TMPMAIL_DIR="/tmp/tmpmail"
 # that gets generated. This prevents the user from providing
 # the email address everytime they run tmpmail
 TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
+
+# tmpmail.html is where the email gets stored.
+# Even though the file ends with a .html extension, the raw text version of
+# the email will also be stored in this file so that w3m and other browsers
+# are able to open this file
 TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
 
 usage() {
@@ -46,6 +51,7 @@ EOF
 }
 
 has() {
+    # Check if the user 'has' a command installed
     command -v "$1" >/dev/null 2>&1
 }
 
@@ -194,6 +200,9 @@ view_email() {
     FROM=$(jq -r ".from" <<<"$DATA")
     SUBJECT=$(jq -r ".subject" <<<"$DATA")
     HTML_BODY=$(jq -r ".htmlBody" <<<"$DATA")
+
+    # If you get an email that is in pure text, the .htmlBody field will be empty and
+    # we will need to get the content from .textBody instead
     [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(jq -r ".textBody" <<<"$DATA")</pre>"
 
     # Create the HTML with all the information that is relevant and then
