@@ -8,7 +8,7 @@
 export LC_ALL=C
 export LC_CTYPE=C
 
-VERSION=1.0.4
+VERSION=1.0.5
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -43,7 +43,7 @@ usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
 optional arguments:
 -h, --help           Show this help message
     --version        Print version
--g, --generate       Generate a new email address
+-g, --generate       Generate a new email address. You may aslo pass a custom username along with this flag
 -r, --recent         View the most recent email
 -t, --text           View the email as raw text, where all the HTML tags are removed
 -b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
@@ -71,6 +71,7 @@ generate_email_address() {
     # We need this variable so we can know whether or not we need to show the user
     # what the email was. <-- More about this can be found further down in this function.
     EXTERNALLY=${1:-false}
+    CUSTOM=${2:-false}
 
     # Generate a random email address.
     # This function is called whenever the user wants to generate a new email
@@ -83,6 +84,8 @@ generate_email_address() {
     # giving us a text which only contains lower case letters form A to Z. We then take
     # the first 10 characters, which will be the username of the email address
     USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+
+    [ "$CUSTOM" != false ] && USERNAME=$CUSTOM
 
     # This is an array of the valid TLDS which 1secmail provides.
     TLDS=(com net org)
@@ -271,7 +274,7 @@ main() {
     while [[ "$1" ]]; do
         case "$1" in
             --help | -h) usage && exit ;;
-            --generate | -g) generate_email_address true && exit ;;
+            --generate | -g) generate_email_address true "$2" && exit ;;
             --browser | -b) BROWSER="$2" ;;
             --text | -t) RAW_TEXT=true ;;
             --version) echo "$VERSION" && exit ;;
