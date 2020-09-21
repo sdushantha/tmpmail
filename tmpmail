@@ -8,7 +8,7 @@
 export LC_ALL=C
 export LC_CTYPE=C
 
-VERSION=1.0.6
+VERSION=1.0.7
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -89,8 +89,6 @@ generate_email_address() {
     # the first 10 characters, which will be the username of the email address
     USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
 
-    [ "$CUSTOM" != false ] && USERNAME=$CUSTOM
-
     # This is an array of the valid TLDS which 1secmail provides.
     TLDS=(com net org)
 
@@ -99,10 +97,22 @@ generate_email_address() {
 
     EMAIL_ADDRESS="$USERNAME@1secmail.$TLD"
 
-    # If the user provided a custom email address which matches
-    # [a-zA-Z0-9_\-\.]+@1secmail\.(com|net|org)
-    # then use that email address
-    [ "$CUSTOM" != false ] && EMAIL_ADDRESS=$CUSTOM
+    # If the user provided a custom email address then use that email address
+    if [ "$CUSTOM" != false ]; then
+        EMAIL_ADDRESS=$CUSTOM
+
+        # Do a regex check to see if the email address provided by the user is a 
+        # valid email address
+        echo "$EMAIL_ADDRESS" | grep -E "[a-z]+@1secmail\.(com|net|org)" >/dev/null
+        
+        # Get the exit status of the command above
+        STATUS=$?
+
+        if [ "$STATUS" -ne 0 ]; then
+            echo "Error: Provided email is invalid. Must match [a-z]+@1secmail.(com|net|org)"
+            exit 1
+        fi
+    fi
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
     # so that it can be whenever 'tmpmail' is run
@@ -257,7 +267,7 @@ main() {
     dependencies=(jq w3m curl awk)
     for dependency in "${dependencies[@]}"; do
         if ! has "$dependency"; then
-            echo "error: Could not find '${dependency}', is it installed?" >&2
+            echo "Error: Could not find '${dependency}', is it installed?" >&2
             exit 1
         fi
     done
@@ -296,7 +306,7 @@ main() {
                 # the email that belongs to the ID
                 view_email "$1" && exit
                 ;;
-            -*) echo "error: option $1 does not exist" ;;
+            -*) echo "Error: option $1 does not exist" ;;
         esac
         shift
     done
