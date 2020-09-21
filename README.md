@@ -43,12 +43,13 @@ $ yay -S tmpmail-git
 
 ## Usage
 ```console
-usage: tmpmail [-h] [--generate] CUSTOM [--text] [--browser BROWSER] [--recent] ID
+$ tmpmail --help
+usage: tmpmail [-h] [--generate] [--text] [--browser BROWSER] [--recent] ID
 
 optional arguments:
 -h, --help           Show this help message
     --version        Print version
--g, --generate       Generate a new email address
+-g, --generate       Generate a new email address. You may aslo pass a custom username along with this flag
 -r, --recent         View the most recent email
 -t, --text           View the email as raw text, where all the HTML tags are removed
 -b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
