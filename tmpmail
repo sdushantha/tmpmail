@@ -8,7 +8,7 @@
 export LC_ALL=C
 export LC_CTYPE=C
 
-VERSION=1.0.5
+VERSION=1.0.6
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -73,6 +73,10 @@ generate_email_address() {
     EXTERNALLY=${1:-false}
     CUSTOM=${2:-false}
 
+    # This variable lets generate_email_address know if the user has provided a custom
+    # email address which they want to use
+    CUSTOM=${2:-false}
+
     # Generate a random email address.
     # This function is called whenever the user wants to generate a new email
     # address by running 'tmpmail --generate' or when the user runs 'tmpmail'
@@ -93,9 +97,16 @@ generate_email_address() {
     # Randomly pick one of the TLDS mentiond above.
     TLD=${TLDS[$RANDOM % ${#TLDS[@]}]}
 
+    EMAIL_ADDRESS="$USERNAME@1secmail.$TLD"
+
+    # If the user provided a custom email address which matches
+    # [a-zA-Z0-9_\-\.]+@1secmail\.(com|net|org)
+    # then use that email address
+    [ "$CUSTOM" != false ] && EMAIL_ADDRESS=$CUSTOM
+
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
     # so that it can be whenever 'tmpmail' is run
-    echo "$USERNAME@1secmail.$TLD" >"$TMPMAIL_EMAIL_ADDRESS"
+    echo $EMAIL_ADDRESS >"$TMPMAIL_EMAIL_ADDRESS"
 
     # If this function was called because the user wanted to generate a new
     # email address, show them the email address
