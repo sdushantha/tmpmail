@@ -258,7 +258,7 @@ view_recent_email() {
     #
     # This is done by listing all the received email like you
     # normally see on the terminal when running 'tmpmail'.
-    # We then grab the ID of the most recent  
+    # We then grab the ID of the most recent
     # email, which the first line.
     MAIL_ID=$(list_emails | head -3 | tail -1 | cut -d' ' -f 1)
     view_email "$MAIL_ID"
