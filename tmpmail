@@ -2,7 +2,7 @@
 #
 # by Siddharth Dushantha 2020
 #
-# Dependencies: jq, curl, w3m, awk
+# Dependencies: jq, curl, w3m
 #
 
 export LC_ALL=C
@@ -258,15 +258,13 @@ view_recent_email() {
     #
     # This is done by listing all the received email like you
     # normally see on the terminal when running 'tmpmail'.
-    # We then use 'awk' to grab the ID of the most recent
-    # email, which the first line.
-    MAIL_ID=$(list_emails | awk 'NR==3{print $1}')
+    MAIL_ID=$(list_emails | head -3 | tail -1 | cut -d' ' -f 1)
     view_email "$MAIL_ID"
 }
 
 main() {
     # Iterate of the array of dependencies and check if the user has them installed
-    dependencies=(jq w3m curl awk)
+    dependencies=(jq w3m curl)
     for dependency in "${dependencies[@]}"; do
         if ! has "$dependency"; then
             echo "Error: Could not find '${dependency}', is it installed?" >&2
