@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #
 # by Siddharth Dushantha 2020
 #
@@ -8,7 +8,7 @@
 export LC_ALL=C
 export LC_CTYPE=C
 
-VERSION=1.0.8
+VERSION=1.0.9
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -94,11 +94,11 @@ generate_email_address() {
     # shellcheck disable=SC2018
     USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
 
-    # This is an array of the valid TLDS which 1secmail provides.
-    TLDS=(com net org)
+    # Valid TLDS which 1secmail provides.
+    TLDS="com net org"
 
     # Randomly pick one of the TLDS mentiond above.
-    TLD=${TLDS[$RANDOM % ${#TLDS[@]}]}
+    TLD=$(printf "%b" "$TLDS" | tr " " "\n"| shuf -n 1)
 
     EMAIL_ADDRESS="$USERNAME@1secmail.$TLD"
 
@@ -109,7 +109,7 @@ generate_email_address() {
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
         local regexp="[a-z]+@1secmail\.(com|net|org)"
-        grep -E "$regexp" <<< "$EMAIL_ADDRESS" >/dev/null
+        printf "%b" "$EMAIL_ADDRESS" | grep -E "$regexp" >/dev/null
 
         # Get the exit status of the command above
         STATUS=$?
@@ -147,11 +147,11 @@ list_emails() {
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
-    DATA_LENGTH=$(jq length <<<"$DATA")
+    DATA_LENGTH=$(echo "$DATA" | jq length)
 
     # We are showing what email address is currently being used
     # in case the user has forgotten what the email address was.
-    echo -e "[ Inbox for $EMAIL_ADDRESS ]\n"
+    printf "[ Inbox for %s ]\n\n" "$EMAIL_ADDRESS"
 
     # If the length of the data we got is 0, that means the email address
     # has not received any emails yet.
@@ -159,7 +159,7 @@ list_emails() {
 
     # This is where we store all of our emails, which is then
     # displayed using 'column'
-    INBOX=()
+    INBOX=""
 
     # This for loop goes through each mail that have been received.
     #
@@ -193,21 +193,21 @@ list_emails() {
         # Since arrays in JSON data start at 0, we must subtract
         # the value of $index by 1 so that we dont miss one of the
         # emails in the array
-        MAIL_DATA=$(jq -r ".[$index-1]" <<<"$DATA")
+        MAIL_DATA=$(echo "$DATA" | jq -r ".[$index-1]")
 
-        ID=$(jq -r ".id" <<<"$MAIL_DATA")
-        FROM=$(jq -r ".from" <<<"$MAIL_DATA")
-        SUBJECT=$(jq -r ".subject" <<<"$MAIL_DATA")
+        ID=$(echo "$MAIL_DATA" | jq -r ".id")
+        FROM=$(echo "$MAIL_DATA" | jq -r ".from")
+    SUBJECT=$(echo "$MAIL_DATA" | jq -r ".subject")
 
         # The '||' are used as a divideder for 'column'. 'column' will use this divider as
         # a point of reference to create the division. By default 'column' uses a blank space
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
-        INBOX+=("$ID ||$FROM ||$SUBJECT")
+        INBOX="$INBOX$ID ||$FROM ||$SUBJECT\n"
     done
 
     # Show the emails cleanly
-    column -t -s "||" < <(printf '%s\n' "${INBOX[@]}")
+    printf "%b" "$INBOX" | column -t -s "||"
 }
 
 view_email() {
@@ -222,26 +222,27 @@ view_email() {
     # Luckly 1secmail's API is not complicated and returns 'Message not found' as plain text
     # if our email address as not received any emails.
     # If we received the error message from the API just quit because there is nothing to do
-    [[ "$DATA" == "Message not found" ]] && print_error "Message not found"
+    [ "$DATA" = "Message not found" ] && print_error "Message not found"
 
     # We pass the $DATA to 'jq' which extracts the values
-    FROM=$(jq -r ".from" <<<"$DATA")
-    SUBJECT=$(jq -r ".subject" <<<"$DATA")
-    HTML_BODY=$(jq -r ".htmlBody" <<<"$DATA")
+    FROM=$(echo "$DATA" | jq -r ".from")
+    SUBJECT=$(echo "$DATA" | jq -r ".subject")
+    HTML_BODY=$(echo "$DATA" | jq -r ".htmlBody")
 
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
-    [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(jq -r ".textBody" <<<"$DATA")</pre>"
+    [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(echo "$DATA" | jq -r ".textBody")</pre>"
 
     # Create the HTML with all the information that is relevant and then
     # assigning that HTML to the variable HTML_MAIL. This is the best method
     # to create a multiline variable
-    read -r -d '' HTML_MAIL <<EOF
+    HTML_MAIL=$(cat <<EOF
 <pre><b>To: </b>$EMAIL_ADDRESS
 <b>From: </b>$FROM
 <b>Subject: </b>$SUBJECT</pre>
 $HTML_BODY
 EOF
+)
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
     echo "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
 
@@ -277,9 +278,8 @@ print_error() {
 
 main() {
     # Iterate of the array of dependencies and check if the user has them installed
-    dependencies=(jq w3m curl)
-    for dependency in "${dependencies[@]}"; do
-        ! has "$dependency" && print_error "Could not find '${dependency}', is it installed?"
+    for dependency in jq w3m curl; do
+        ! has "$dependency" && print_error "Could not find '$dependency', is it installed?"
     done
 
     # Create the $TMPMAIL_DIR directory and dont throw any errors
@@ -300,9 +300,9 @@ main() {
     TLD=${EMAIL_ADDRESS#*.}
 
     # If no arguments are provided just the emails
-    [[ $# -eq 0 ]] && list_emails && exit
+    [ $# -eq 0 ] && list_emails && exit
 
-    while [[ "$1" ]]; do
+    while [ "$1" ]; do
         case "$1" in
             --help | -h) usage && exit ;;
             --generate | -g) generate_email_address true "$2" && exit ;;
@@ -316,7 +316,7 @@ main() {
                 # the email that belongs to the ID
                 view_email "$1" && exit
                 ;;
-            -*) echo "Error: option $1 does not exist" ;;
+            -*) echo "Error: option '$1' does not exist" ;;
         esac
         shift
     done
