@@ -103,17 +103,15 @@ generate_email_address() {
     if [ "$CUSTOM" != false ]; then
         EMAIL_ADDRESS=$CUSTOM
 
-        # Do a regex check to see if the email address provided by the user is a 
+        # Do a regex check to see if the email address provided by the user is a
         # valid email address
         echo "$EMAIL_ADDRESS" | grep -E "[a-z]+@1secmail\.(com|net|org)" >/dev/null
-        
+
         # Get the exit status of the command above
         STATUS=$?
 
-        if [ "$STATUS" -ne 0 ]; then
-            echo "Error: Provided email is invalid. Must match [a-z]+@1secmail.(com|net|org)"
-            exit 1
-        fi
+        [[ "$STATUS" -ne 0 ]] \
+            && print_error "Provided email is invalid. Must match [a-z]+@1secmail.(com|net|org)"
     fi
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
@@ -264,14 +262,21 @@ view_recent_email() {
     view_email "$MAIL_ID"
 }
 
+
+print_error() {
+    # Print error message
+    #
+    # The first argument provided to this function will be the error message.
+    # Script will exit after printing the error message.
+    printf "%s\n" "Error: $1" >&2
+    exit 1
+}
+
 main() {
     # Iterate of the array of dependencies and check if the user has them installed
     dependencies=(jq w3m curl)
     for dependency in "${dependencies[@]}"; do
-        if ! has "$dependency"; then
-            echo "Error: Could not find '${dependency}', is it installed?" >&2
-            exit 1
-        fi
+        ! has "$dependency" && print_error "Could not find '${dependency}', is it installed?"
     done
 
     # Create the $TMPMAIL_DIR directory and dont throw any errors
