@@ -107,7 +107,7 @@ generate_email_address() {
 
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
-        REGEXP="[a-z]+@1secmail\.(com|net|org)"
+        REGEXP="[a-z0-9]+@1secmail\.(com|net|org)"
         printf "%b" "$EMAIL_ADDRESS" | grep -E "$REGEXP" >/dev/null
 
         # Get the exit status of the command above
