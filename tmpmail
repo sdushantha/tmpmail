@@ -195,7 +195,7 @@ list_emails() {
 
         ID=$(echo "$MAIL_DATA" | jq -r ".id")
         FROM=$(echo "$MAIL_DATA" | jq -r ".from")
-    SUBJECT=$(echo "$MAIL_DATA" | jq -r ".subject")
+        SUBJECT=$(echo "$MAIL_DATA" | jq -r ".subject")
 
         # The '||' are used as a divideder for 'column'. 'column' will use this divider as
         # a point of reference to create the division. By default 'column' uses a blank space
