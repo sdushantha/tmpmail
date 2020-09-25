@@ -34,6 +34,10 @@ TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
 # are able to open this file
 TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
 
+
+# Default 1secmail API URL
+TMPMAIL_API_URL="https://www.1secmail.com/api/v1/"
+
 usage() {
     # Using 'cat << EOF' we can easily output a multiline text. This is much
     # better than using 'echo' for each line or using '\n' to create a new line.
@@ -64,14 +68,13 @@ generate_email_address() {
     #      be empty as the newly generated email address has not been
     #      sent any emails.
     #
-    # When the function 'generate_email()' is called with the arguement
+    # When the function 'generate_email_address()' is called with the arguement
     # 'true', it means that the function was called because the user
     # ran 'tmpmail --generate'.
     #
     # We need this variable so we can know whether or not we need to show the user
     # what the email was. <-- More about this can be found further down in this function.
     EXTERNALLY=${1:-false}
-    CUSTOM=${2:-false}
 
     # This variable lets generate_email_address know if the user has provided a custom
     # email address which they want to use
@@ -105,13 +108,14 @@ generate_email_address() {
 
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
-        echo "$EMAIL_ADDRESS" | grep -E "[a-z]+@1secmail\.(com|net|org)" >/dev/null
+        local regexp="[a-z]+@1secmail\.(com|net|org)"
+        grep -E "$regexp" <<< "$EMAIL_ADDRESS" >/dev/null
 
         # Get the exit status of the command above
         STATUS=$?
 
         [[ "$STATUS" -ne 0 ]] \
-            && print_error "Provided email is invalid. Must match [a-z]+@1secmail.(com|net|org)"
+            && print_error "Provided email is invalid. Must match $regexp"
     fi
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
@@ -139,7 +143,7 @@ list_emails() {
     # List all the received emails in a nicely formatted order
     #
     # Fetch the email data using 1secmail's API
-    DATA=$(curl -sL "https://1secmail.com/api/v1/?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
+    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
@@ -212,13 +216,13 @@ view_email() {
     # The first argument provided to this function will be the ID of the email
     # that has been received
     EMAIL_ID="$1"
-    DATA=$(curl -sL "https://www.1secmail.com/api/v1/?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
+    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
 
     # After the data is retrieved using the API, we have to check if we got any emails.
     # Luckly 1secmail's API is not complicated and returns 'Message not found' as plain text
     # if our email address as not received any emails.
-    # If we the error message from the API just quit because there is nothing to do
-    [[ "$DATA" == "Message not found" ]] && echo "Message not found" && exit 1
+    # If we received the error message from the API just quit because there is nothing to do
+    [[ "$DATA" == "Message not found" ]] && print_error "Message not found"
 
     # We pass the $DATA to 'jq' which extracts the values
     FROM=$(jq -r ".from" <<<"$DATA")
@@ -248,7 +252,6 @@ EOF
     # Open up the HTML file using $BROWSER. By default,
     # this will be 'w3m'.
     $BROWSER "$TMPMAIL_HTML_EMAIL"
-
 }
 
 view_recent_email() {
