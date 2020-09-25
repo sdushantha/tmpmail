@@ -34,7 +34,6 @@ TMPMAIL_EMAIL_ADDRESS="$TMPMAIL_DIR/email_address"
 # are able to open this file
 TMPMAIL_HTML_EMAIL="$TMPMAIL_DIR/tmpmail.html"
 
-
 # Default 1secmail API URL
 TMPMAIL_API_URL="https://www.1secmail.com/api/v1/"
 
@@ -108,13 +107,13 @@ generate_email_address() {
 
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
-        local regexp="[a-z]+@1secmail\.(com|net|org)"
+        regexp="[a-z]+@1secmail\.(com|net|org)"
         printf "%b" "$EMAIL_ADDRESS" | grep -E "$regexp" >/dev/null
 
         # Get the exit status of the command above
         STATUS=$?
 
-        [[ "$STATUS" -ne 0 ]] \
+        [ "$STATUS" -ne 0 ] \
             && print_error "Provided email is invalid. Must match $regexp"
     fi
 
@@ -266,7 +265,6 @@ view_recent_email() {
     view_email "$MAIL_ID"
 }
 
-
 print_error() {
     # Print error message
     #
@@ -316,7 +314,7 @@ main() {
                 # the email that belongs to the ID
                 view_email "$1" && exit
                 ;;
-            -*) echo "Error: option '$1' does not exist" ;;
+            -*) print_error "option '$1' does not exist" ;;
         esac
         shift
     done
