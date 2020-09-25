@@ -89,9 +89,7 @@ generate_email_address() {
     # So charcters such as dashes, periods, underscore, and numbers are all deleted,
     # giving us a text which only contains lower case letters form A to Z. We then take
     # the first 10 characters, which will be the username of the email address
-    #
-    # shellcheck disable=SC2018
-    USERNAME=$(head /dev/urandom | tr -dc a-z | cut -c1-11)
+    USERNAME=$(head /dev/urandom | tr -dc "[:alnum:]" | cut -c1-11)
 
     # Valid TLDS which 1secmail provides.
     TLDS="com net org"
