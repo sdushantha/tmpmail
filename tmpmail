@@ -107,11 +107,7 @@ generate_email_address() {
         # valid email address
         REGEXP="[a-z0-9]+@1secmail\.(com|net|org)"
         printf "%b" "$EMAIL_ADDRESS" | grep -E "$REGEXP" >/dev/null
-
-        # Get the exit status of the command above
-        STATUS=$?
-
-        [ "$STATUS" -ne 0 ] && print_error "Provided email is invalid. Must match $REGEXP"
+        [ $? -eq 0 ] || print_error "Provided email is invalid. Must match $REGEXP"
     fi
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
