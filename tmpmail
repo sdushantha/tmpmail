@@ -106,8 +106,9 @@ generate_email_address() {
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
         REGEXP="[a-z0-9]+@1secmail\.(com|net|org)"
-        printf "%b" "$EMAIL_ADDRESS" | grep -E "$REGEXP" >/dev/null
-        [ $? -eq 0 ] || print_error "Provided email is invalid. Must match $REGEXP"
+        if ! printf %b "$EMAIL_ADDRESS" | grep -Eq "$REGEXP"; then
+            print_error "Provided email is invalid. Must match $REGEXP"
+        fi
     fi
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
