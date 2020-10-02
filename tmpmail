@@ -46,7 +46,6 @@ optional arguments:
 -t, --text           View the email as raw text, where all the HTML tags are removed
 -b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
 '
-}
 
 generate_email_address() {
     # There are 2 ways which this function is called in this script.
