@@ -53,11 +53,6 @@ optional arguments:
 EOF
 }
 
-has() {
-    # Check if the user 'has' a command installed
-    command -v "$1" >/dev/null 2>&1
-}
-
 generate_email_address() {
     # There are 2 ways which this function is called in this script.
     #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
@@ -271,7 +266,9 @@ print_error() {
 main() {
     # Iterate of the array of dependencies and check if the user has them installed
     for dependency in jq w3m curl; do
-        ! has "$dependency" && print_error "Could not find '$dependency', is it installed?"
+        if ! command -v "$dependency" >/dev/null 2>&1; then
+            print_error "Could not find '$dependency', is it installed?"
+        fi
     done
 
     # Create the $TMPMAIL_DIR directory and dont throw any errors
