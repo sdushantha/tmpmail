@@ -1,0 +1,33 @@
+.Dd 2020-10-01
+.Dt tmpmail 1
+.Os
+.Sh NAME
+.Nm tmpmail
+.Nd temporary mail
+.Sh SYNOPSIS
+.Nm
+.Fl a Ar address | Fl h | l | r | V
+.Nm
+.Op Fl b Ar browser | Fl t
+.Fl m | s Ar ID
+.Sh OPTIONS
+.Bl -tag -width Ds
+.It Fl a | -address Ar address
+register specified email address
+.It Fl b | -browser Ar browser
+specify browser (default is w3m)
+.It Fl h | -help
+help
+.It Fl l | -list
+list messages
+.It Fl m | -most-recent
+show most recent message
+.It Fl r | -random
+register random email address
+.It Fl s | -show Ar ID
+show message with ID
+.It Fl t | -text
+text output (default is html)
+.It Fl V | -version
+version
+.El

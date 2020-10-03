@@ -38,15 +38,27 @@ usage() {
     # Using 'cat << EOF' we can easily output a multiline text. This is much
     # better than using 'echo' for each line or using '\n' to create a new line.
     cat <<EOF
-usage: tmpmail [-h] [--generate] [--browser BROWSER] [--recent] ID
-
-optional arguments:
--h, --help           Show this help message
-    --version        Print version
--g, --generate       Generate a new email address. You may also pass a custom username along with this flag
--r, --recent         View the most recent email
--t, --text           View the email as raw text, where all the HTML tags are removed
--b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
+tmpmail -a address | -h | -l | -r | -V
+tmpmail [-b browser | -t] -m | -s ID
+OPTIONS
+     -a | --address address
+             register specified email address
+     -b | --browser browser
+             specify browser (default is w3m)
+     -h | --help
+             help
+     -l | --list
+             list messages
+     -m | --most-recent
+             show most recent message
+     -r | --random
+             register random email address
+     -s | --show ID
+             show message with ID
+     -t | --text
+             text output (default is html)
+     -V | --version
+             version
 EOF
 }
 
@@ -285,27 +297,38 @@ main() {
     # period '.' which gives us the TLD
     TLD=${EMAIL_ADDRESS#*.}
 
-    # If no arguments are provided just the emails
-    [ $# -eq 0 ] && list_emails && exit
-
-    while [ "$1" ]; do
+    while [ $# -gt 0 ]; do
         case "$1" in
-            --help | -h) usage && exit ;;
-            --generate | -g) generate_email_address true "$2" && exit ;;
-            --browser | -b) BROWSER="$2" ;;
-            --text | -t) RAW_TEXT=true ;;
-            --version) echo "$VERSION" && exit ;;
-            --recent | -r) view_recent_email && exit ;;
-            *[0-9]*)
-                # If the user provides number as an argument,
-                # assume its the ID of an email and try getting
-                # the email that belongs to the ID
-                view_email "$1" && exit
-                ;;
-            -*) print_error "option '$1' does not exist" ;;
+            -a | --address)
+                if [ $# -lt 2 ]; then print_error "missing arg for $1"
+                else generate_email_address true "$2"; exit
+                fi;;
+            -b | --browser)
+                if [ $# -lt 2 ]; then print_error "missing arg for $1"
+                else BROWSER="$2"; shift
+                fi;;
+            -h | --help)
+                usage; exit ;;
+            -l | --list)
+                list_emails; exit ;;
+            -m | --most-recent)
+                view_recent_email; exit ;;
+            -r | --random)
+                generate_email_address true; exit ;;
+            -s | --show)
+                if [ $# -lt 2 ]; then print_error "missing arg for $1"
+                else view_email "$2"; shift
+                fi;;
+            -t | --text)
+                RAW_TEXT=true ;;
+            -V | --version)
+                echo "$VERSION"; exit ;;
+            -*) print_error "unrecognized option '$1'" ;;
+            *) print_error "unexpected argument '$1'" ;;
         esac
         shift
     done
+    usage
 }
 
 main "$@"
