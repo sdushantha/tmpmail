@@ -105,7 +105,7 @@ generate_email_address() {
 
     # Save the generated email address to the $TMPMAIL_EMAIL_ADDRESS file
     # so that it can be whenever 'tmpmail' is run
-    echo "$EMAIL_ADDRESS" >"$TMPMAIL_EMAIL_ADDRESS"
+    printf %s "$EMAIL_ADDRESS" >"$TMPMAIL_EMAIL_ADDRESS"
 
     # If this function was called because the user wanted to generate a new
     # email address, show them the email address
@@ -132,7 +132,7 @@ list_emails() {
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
-    DATA_LENGTH=$(echo "$DATA" | jq length)
+    DATA_LENGTH=$(printf %s "$DATA" | jq length)
 
     # We are showing what email address is currently being used
     # in case the user has forgotten what the email address was.
@@ -178,11 +178,11 @@ list_emails() {
         # Since arrays in JSON data start at 0, we must subtract
         # the value of $index by 1 so that we dont miss one of the
         # emails in the array
-        MAIL_DATA=$(echo "$DATA" | jq -r ".[$index-1]")
+        MAIL_DATA=$(printf %s "$DATA" | jq -r ".[$index-1]")
 
-        ID=$(echo "$MAIL_DATA" | jq -r ".id")
-        FROM=$(echo "$MAIL_DATA" | jq -r ".from")
-        SUBJECT=$(echo "$MAIL_DATA" | jq -r ".subject")
+        ID=$(printf %s "$MAIL_DATA" | jq -r ".id")
+        FROM=$(printf %s "$MAIL_DATA" | jq -r ".from")
+        SUBJECT=$(printf %s "$MAIL_DATA" | jq -r ".subject")
 
         # The '||' are used as a divideder for 'column'. 'column' will use this divider as
         # a point of reference to create the division. By default 'column' uses a blank space
@@ -210,13 +210,13 @@ view_email() {
     [ "$DATA" = "Message not found" ] && print_error "Message not found"
 
     # We pass the $DATA to 'jq' which extracts the values
-    FROM=$(echo "$DATA" | jq -r ".from")
-    SUBJECT=$(echo "$DATA" | jq -r ".subject")
-    HTML_BODY=$(echo "$DATA" | jq -r ".htmlBody")
+    FROM=$(printf %s "$DATA" | jq -r ".from")
+    SUBJECT=$(printf %s "$DATA" | jq -r ".subject")
+    HTML_BODY=$(printf %s "$DATA" | jq -r ".htmlBody")
 
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
-    [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(echo "$DATA" | jq -r ".textBody")</pre>"
+    [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(printf %s "$DATA" | jq -r ".textBody")</pre>"
 
     # Create the HTML with all the information that is relevant and then
     # assigning that HTML to the variable HTML_MAIL. This is the best method
@@ -229,7 +229,7 @@ $HTML_BODY
 EOF
 )
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
-    echo "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
+    printf %s "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
 
     # If the '--text' flag is used, then use 'w3m' to convert the HTML of
     # the email to pure text by removing all the HTML tags
