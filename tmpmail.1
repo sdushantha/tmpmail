@@ -1,0 +1,44 @@
+.Dd 2020-10-01
+.Dt tmpmail 1
+.Os
+.Sh NAME
+.Nm tmpmail
+.Nd temporary mail
+.Sh SYNOPSIS
+.Nm
+.Nm
+.Fl h | -version
+.Nm
+.Fl g Op Ar ADDRESS
+.Nm
+.Op Fl t | b Ar BROWSER
+.Fl r | Ar ID
+.Sh DESCRIPTION
+.Nm
+is a command line utility written in POSIX shell that allows you to create a temporary email address and receive emails to the temporary email address. It uses 1secmail's API to receive emails.
+.Ss Options and Arguments
+When called with no option and no argument,
+.Nm
+lists the messages in the inbox and their numeric IDs.
+When called with one argument,
+.Nm
+shows the email message with specified
+.Ar ID .
+.Bl -tag -width Ds
+.It Fl b , Fl Fl browser Ar BROWSER
+Specify
+.Ar BROWSER
+(default: w3m) that is used to render the HTML of the email
+.It Fl g , Fl Fl generate Op Ar ADDRESS
+Generate a new email address, either the specified
+.Ar ADDRESS ,
+or randomly create one
+.It Fl h , Fl Fl help
+Show help
+.It Fl r , Fl Fl recent
+View the most recent email message
+.It Fl t , Fl Fl text
+View the email as raw text, where all the HTML tags are removed.  Without this option, HTML is used.
+.It Fl Fl version
+Show version
+.El
