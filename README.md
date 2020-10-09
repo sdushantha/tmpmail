@@ -43,15 +43,30 @@ $ yay -S tmpmail-git
 ## Usage
 ```console
 $ tmpmail --help
-usage: tmpmail [-h] [--generate] [--text] [--browser BROWSER] [--recent] ID
+tmpmail
+tmpmail -h | --version
+tmpmail -g [ADDRESS]
+tmpmail [-t | -b BROWSER] -r | ID
 
-optional arguments:
--h, --help           Show this help message
-    --version        Print version
--g, --generate       Generate a new email address. You may aslo pass a custom email address along with this flag
--r, --recent         View the most recent email
--t, --text           View the email as raw text, where all the HTML tags are removed
--b, --browser        Change the browser that is used to render the HTML of the email (default: w3m)
+When called with no option and no argument, tmpmail lists the messages in
+the inbox and their numeric IDs.  When called with one argument, tmpmail
+shows the email message with specified ID.
+
+-b, --browser BROWSER
+        Specify BROWSER (default: w3m) that is used to render the HTML of
+        the email
+-g, --generate [ADDRESS]
+        Generate a new email address, either the specified ADDRESS, or
+        randomly create one
+-h, --help
+        Show help
+-r, --recent
+        View the most recent email message
+-t, --text
+        View the email as raw text, where all the HTML tags are removed.
+        Without this option, HTML is used.
+--version
+        Show version
 ```
 
 ### Examples
