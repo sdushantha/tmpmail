@@ -18,9 +18,10 @@ use the `--browser` argument followed by the command needed to launch the web br
 <br>
 
 ## Dependencies
-- `w3m`
-- `curl`
-- [`jq`](https://github.com/stedolan/jq)
+- [`Homebrew:`](https://brew.sh/) `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"`
+- `w3m:` `brew install w3m`
+- `curl:` `brew install curl`
+- [`jq:`](https://github.com/stedolan/jq) `brew install jq`
 
 ## Installation
 ### Install locally
