@@ -303,24 +303,23 @@ main() {
     # If no arguments are provided just the emails
     [ $# -eq 0 ] && list_emails && exit
 
-    while [ "$1" ]; do
+    OPTS=$(getopt -n tmpmail -o hg:b:tr --long help,generate:,browser:,text,version,recent -- "$@") || exit 1
+    eval set -- "$OPTS"
+    while true; do
         case "$1" in
             --help | -h) usage && exit ;;
             --generate | -g) generate_email_address true "$2" && exit ;;
-            --browser | -b) BROWSER="$2" ;;
-            --text | -t) RAW_TEXT=true ;;
+            --browser | -b) BROWSER="$2"; shift 2;;
+            --text | -t) RAW_TEXT=true; shift;;
             --version) echo "$VERSION" && exit ;;
             --recent | -r) view_recent_email && exit ;;
-            *[0-9]*)
-                # If the user provides number as an argument,
-                # assume its the ID of an email and try getting
-                # the email that belongs to the ID
-                view_email "$1" && exit
-                ;;
-            -*) print_error "option '$1' does not exist" ;;
+            --) shift; break;;
         esac
-        shift
     done
+    # If the user provides number as an argument,
+    # assume its the ID of an email and try getting
+    # the email that belongs to the ID
+    [ -z "${1##*[0-9]*}" ] && view_email "$1" && exit
 }
 
 main "$@"
