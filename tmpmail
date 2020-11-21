@@ -5,7 +5,7 @@
 # Dependencies: jq, curl, w3m
 #
 
-VERSION=1.1.2
+VERSION=1.1.3
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -98,13 +98,12 @@ generate_email_address() {
     # the first 10 characters, which will be the username of the email address
     USERNAME=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
 
-    # Valid TLDS which 1secmail provides.
-    TLDS="com net org"
+    DOMAINS="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com" 
 
-    # Randomly pick one of the TLDS mentiond above.
-    TLD=$(printf "%b" "$TLDS" | tr " " "\n"| shuf -n 1)
+    # Randomly pick one of the domains mentiond above.
+    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| shuf -n 1)
 
-    EMAIL_ADDRESS="$USERNAME@1secmail.$TLD"
+    EMAIL_ADDRESS="$USERNAME@$DOMAIN"
 
     # If the user provided a custom email address then use that email address
     if [ "$CUSTOM" != false ]; then
@@ -112,7 +111,7 @@ generate_email_address() {
 
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
-        REGEXP="[a-z0-9]+@1secmail\.(com|net|org)"
+        REGEXP="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com)"
         if ! printf %b "$EMAIL_ADDRESS" | grep -Eq "$REGEXP"; then
             print_error "Provided email is invalid. Must match $REGEXP"
         fi
@@ -143,7 +142,7 @@ list_emails() {
     # List all the received emails in a nicely formatted order
     #
     # Fetch the email data using 1secmail's API
-    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=getMessages&login=$USERNAME&domain=1secmail.$TLD")
+    DATA=$(curl -sL "$TMPMAIL_API_URL?action=getMessages&login=$USERNAME&domain=$DOMAIN")
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
@@ -216,7 +215,7 @@ view_email() {
     # The first argument provided to this function will be the ID of the email
     # that has been received
     EMAIL_ID="$1"
-    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=1secmail.$TLD&id=$EMAIL_ID")
+    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID")
 
     # After the data is retrieved using the API, we have to check if we got any emails.
     # Luckly 1secmail's API is not complicated and returns 'Message not found' as plain text
@@ -297,11 +296,11 @@ main() {
 
     # ${VAR%PATTERN} Remove shortest match of pattern from end of a string.
     # In this case, it takes the EMAIL_ADDRESS and removes everything until the
-    # period '.' which gives us the TLD
-    TLD=${EMAIL_ADDRESS#*.}
+    # period '.' which gives us the domain
+    DOMAIN=${EMAIL_ADDRESS#*@}
 
     # If no arguments are provided just the emails
-    [ $# -eq 0 ] && list_emails && exit
+    [ $# -eq 0 ] && list_emails  && exit
 
     while [ "$1" ]; do
         case "$1" in
