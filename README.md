@@ -111,4 +111,4 @@ Hello World
 ```
 
 ## Credits
-This script is heavily inspired by Mitch Weaver's [`1secmail`](https://github.com/mitchweaver/bin/blob/master/application/1secmail) script
+This script is heavily inspired by Mitch Weaver's [`1secmail`](https://github.com/mitchweaver/bin/blob/master/OLD/1secmail) script
