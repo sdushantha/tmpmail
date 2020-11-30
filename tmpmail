@@ -101,7 +101,7 @@ generate_email_address() {
     DOMAINS="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com" 
 
     # Randomly pick one of the domains mentiond above.
-    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| shuf -n 1)
+    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| randomize | tail -1)
 
     EMAIL_ADDRESS="$USERNAME@$DOMAIN"
 
@@ -207,6 +207,12 @@ list_emails() {
 
     # Show the emails cleanly
     printf "%b" "$INBOX" | column -t -s "||"
+}
+
+# shuf(1) is not part of POSIX, neither is 'sort -R'
+randomize() {
+	awk 'BEGIN {srand();} {print rand(), $0}' "$@" | \
+		sort -n -k1 | cut -d' ' -f2
 }
 
 view_email() {
