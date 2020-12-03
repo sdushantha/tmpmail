@@ -188,7 +188,8 @@ list_emails() {
     #  5
     #
     # We can then put those results into the foor loop
-    for index in $(seq 1 "$DATA_LENGTH"); do
+    index=1
+    while [ $index -le "${DATA_LENGTH}" ]; do
         # Since arrays in JSON data start at 0, we must subtract
         # the value of $index by 1 so that we dont miss one of the
         # emails in the array
@@ -203,6 +204,7 @@ list_emails() {
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
         INBOX="$INBOX$ID ||$FROM ||$SUBJECT\n"
+        index=$(( index + 1 ))
     done
 
     # Show the emails cleanly
@@ -282,7 +284,7 @@ print_error() {
 
 main() {
     # Iterate of the array of dependencies and check if the user has them installed
-    for dependency in jq curl; do
+    for dependency in jq w3m curl; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
             print_error "Could not find '$dependency', is it installed?"
         fi
