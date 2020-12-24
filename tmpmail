@@ -258,7 +258,7 @@ download_attachment () {
     EMAIL_ID="$1"
     FILE="$2"
     DATA=$(curl -sL "${TMPMAIL_API_URL}?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILE")
-    if [ "$DATA" == "" ]
+    if [ "$DATA" = "" ]
     then
         print_error "Attachment or email id does not exist."
     fi
