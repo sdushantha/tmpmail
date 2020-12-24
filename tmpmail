@@ -254,6 +254,14 @@ EOF
     $BROWSER "$TMPMAIL_HTML_EMAIL"
 }
 
+download_attachment () {
+    EMAIL_ID="$1"
+    FILE="$2"
+    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILE")
+    [ "$DATA" == "" ] && print_error "Attachment or email id does not exist."
+    printf %s "$DATA" > "$FILE"
+}
+
 view_recent_email() {
     # View the most recent email.
     #
@@ -309,6 +317,7 @@ main() {
             --browser | -b) BROWSER="$2" ;;
             --text | -t) RAW_TEXT=true ;;
             --version) echo "$VERSION" && exit ;;
+            --download | -d) download_attachment "$2" "$3" && exit ;;
             --recent | -r) view_recent_email && exit ;;
             *[0-9]*)
                 # If the user provides number as an argument,
