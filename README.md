@@ -62,8 +62,6 @@ shows the email message with specified ID.
         Show help
 -r, --recent
         View the most recent email message
--d, --download
-        Download an attachment from an email
 -t, --text
         View the email as raw text, where all the HTML tags are removed.
         Without this option, HTML is used.
