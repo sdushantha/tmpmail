@@ -245,13 +245,14 @@ $HTML_BODY
 EOF
 )
     # Add this logic to preven
-    if [[ ! $ATTACHMENTS = "0" ]] && [[ ! $ATTACHMENTS = 0 ]]
+    if [ ! $ATTACHMENTS = "0" ] && [ ! $ATTACHMENTS = 0 ]
     then
         HTML_MAIL+="<hr><br>Attachments<br>"
-        for (( index=0; index < $ATTACHMENTS; index++ )); do
+        MINUS1=`expr $ATTACHMENTS - 1`
+        for index in $(seq 0 "$MINUS1"); do
             FILENAME=$(printf %s "$DATA" | jq -r '.attachments | .['$index'] | .filename')
             LINK="<a href=${TMPMAIL_API_URL}?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME download>$FILENAME</a><br>"
-            HTML_MAIL+="$LINK"
+            HTML_MAIL="$HTML_MAIL$LINK"
         done
     fi
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
@@ -273,11 +274,13 @@ list_attachments () {
         print_error "Message not found"
     fi
     ATTACHMENTSLEN=$(printf %s "$DATA" | jq -r ".attachments | length")
-    echo "[ Attachments in $EMAIL_ID ]\n"
-    for (( index=0; index < $ATTACHMENTSLEN; index++ )); do
+    MINUS1=`expr $ATTACHMENTSLEN - 1`
+    printf "%s\n" "[ Attachments in $EMAIL_ID ]"
+    echo
+    for index in $(seq 0 $MINUS1); do
         FILENAME=$(printf %s "$DATA" | jq -r '.attachments | .['$index'] | .filename')
         DOWNLOADURL="${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
-        echo $DOWNLOADURL
+        echo "$DOWNLOADURL"
     done
 }
 
