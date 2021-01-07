@@ -270,7 +270,7 @@ EOF
 list_attachments () {
     EMAIL_ID="$1"
     DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID")
-    if [ $DATA = "Message not found" ]; then
+    if [ "$DATA" = "Message not found" ]; then
         print_error "Message not found"
     fi
     ATTACHMENTSLEN=$(printf %s "$DATA" | jq -r ".attachments | length")
