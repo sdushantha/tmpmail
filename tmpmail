@@ -245,12 +245,12 @@ $HTML_BODY
 EOF
 )
     # Add this logic to preven
-    if [ ! $ATTACHMENTS = "0" ] && [ ! $ATTACHMENTS = 0 ]
+    if [ ! "$ATTACHMENTS" = "0" ] && [ ! "$ATTACHMENTS" = 0 ]
     then
-        HTML_MAIL+="<hr><br>Attachments<br>"
-        MINUS1=`expr $ATTACHMENTS - 1`
+        HTML_MAIL="$HTML_MAIL<hr><br>Attachments<br>"
+        MINUS1="$(($ATTACHMENTS-1))"
         for index in $(seq 0 "$MINUS1"); do
-            FILENAME=$(printf %s "$DATA" | jq -r '.attachments | .['$index'] | .filename')
+            FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index] | .filename")
             LINK="<a href=${TMPMAIL_API_URL}?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME download>$FILENAME</a><br>"
             HTML_MAIL="$HTML_MAIL$LINK"
         done
@@ -270,15 +270,15 @@ EOF
 list_attachments () {
     EMAIL_ID="$1"
     DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID")
-    if [[ $DATA == "Message not found" ]]; then
+    if [ $DATA == "Message not found" ]; then
         print_error "Message not found"
     fi
     ATTACHMENTSLEN=$(printf %s "$DATA" | jq -r ".attachments | length")
-    MINUS1=`expr $ATTACHMENTSLEN - 1`
+    MINUS1="$(($ATTACHMENTSLEN-1))"
     printf "%s\n" "[ Attachments in $EMAIL_ID ]"
     echo
-    for index in $(seq 0 $MINUS1); do
-        FILENAME=$(printf %s "$DATA" | jq -r '.attachments | .['$index'] | .filename')
+    for index in $(seq 0 "$MINUS1"); do
+        FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index] | .filename")
         DOWNLOADURL="${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
         echo "$DOWNLOADURL"
     done
