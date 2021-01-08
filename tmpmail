@@ -332,7 +332,6 @@ main() {
             --browser | -b) BROWSER="$2" ;;
             --text | -t) RAW_TEXT=true ;;
             --version) echo "$VERSION" && exit ;;
-            --attachments | -a) list_attachments "$2" && exit ;;
             --recent | -r) view_recent_email && exit ;;
             *[0-9]*)
                 # If the user provides number as an argument,
