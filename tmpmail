@@ -211,7 +211,7 @@ list_emails() {
     printf "%b" "$INBOX" | column -t -s "||"
 }
 
-# shuf(1) is not part of POSIX, neither is 'sort -R'
+# 'shuf' is not part of POSIX, neither is 'sort -R'
 randomize() {
 	awk 'BEGIN {srand();} {print rand(), $0}' | \
 		sort -n -k1 | cut -d' ' -f2
