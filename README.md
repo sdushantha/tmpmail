@@ -106,6 +106,10 @@ From: username@example.com
 Subject: Test Email
 
 Hello World
+
+[Attachments]
+https://is.gd/aBCdEf [apple.jpg]
+https://is.gd/AbCDeF [ball.jpg]
 ```
 
 ## Credits
