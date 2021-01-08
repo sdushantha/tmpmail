@@ -65,6 +65,25 @@ shows the email message with specified ID.
 EOF
 }
 
+update () {
+    GETNEWVERSION=$(curl -sL https://git.io/tmpmail)
+
+    # We create a new file in order to get the new version of tmpmail
+    printf "%s" "$GETNEWVERSION" > /tmp/tmpmail/tmpmail_newversion
+
+    # The user might have put tmpmail into another part of the $PATH
+    TMPMAILPATH=$(which tmpmail)
+    CURRENTVERSION=$("$TMPMAILPATH" --version)
+    NEWVERSION=$(sh /tmp/tmpmail/tmpmail_newversion --version)
+
+    # Compare new and old versions
+    if [ "$CURRENTVERSION" = "$NEWVERSION" ]; then
+        echo "Version up to date."
+    else
+        printf "%s" "$GETNEWVERSION" > "$TMPMAILPATH"
+    fi
+}
+
 generate_email_address() {
     # There are 2 ways which this function is called in this script.
     #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
