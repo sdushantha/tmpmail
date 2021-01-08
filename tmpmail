@@ -257,7 +257,7 @@ EOF
                 # The actual url is way too long and does not look so nice in STDOUT.
                 # Therefore we will shortening it using is.gd so that it looks nicer.
                 LINK=$(curl -s -F"url=$LINK" "https://is.gd/create.php?format=simple")
-                HTML_MAIL="$HTML_MAIL$LINK<br>"
+                HTML_MAIL="$HTML_MAIL$LINK  [$FILENAME]<br>"
             else
                 HTML_MAIL="$HTML_MAIL$HTML_LINK"
             fi
