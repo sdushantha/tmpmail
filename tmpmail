@@ -251,7 +251,7 @@ EOF
         for index in $(seq 1 "$ATTACHMENTS"); do
             FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index-1] | .filename")
             LINK="$TMPMAIL_API_URL?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
-            HTML_LINK="<a href=$LINK download="$FILENAME">$FILENAME</a><br>"
+            HTML_LINK="<a href=$LINK download=$FILENAME>$FILENAME</a><br>"
 
             if [ "$RAW_TEXT" = true ]; then
                 # The actual url is way too long and does not look so nice in STDOUT.
