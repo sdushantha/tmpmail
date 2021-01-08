@@ -229,6 +229,10 @@ view_email() {
     HTML_BODY=$(printf %s "$DATA" | jq -r ".htmlBody")
     ATTACHMENTS=$(printf %s "$DATA" | jq -r ".attachments | length")
 
+    #printf %s "$DATA" | jq -r ".attachments| .[0] | .filename"
+    #printf %s "$DATA" | jq -r ".attachments| .[1] | .filename"
+    #printf %s "$DATA" | jq -r ".attachments| .[2] | .filename"
+    #exit
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
     [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(printf %s "$DATA" | jq -r ".textBody")</pre>"
@@ -244,17 +248,26 @@ $HTML_BODY
 
 EOF
 )
-    # Add this logic to preven
-    if [ ! "$ATTACHMENTS" = "0" ] && [ ! "$ATTACHMENTS" = 0 ]
-    then
-        HTML_MAIL="$HTML_MAIL<hr><br>Attachments<br>"
-        MINUS1="$((ATTACHMENTS-1))"
-        for index in $(seq 0 "$MINUS1"); do
-            FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index] | .filename")
-            LINK="<a href=${TMPMAIL_API_URL}?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME download>$FILENAME</a><br>"
-            HTML_MAIL="$HTML_MAIL$LINK"
+    
+    if [ ! "$ATTACHMENTS" = "0" ]; then
+        HTML_MAIL="$HTML_MAIL<br><b>[Attachments]</b><br>"
+
+        for index in $(seq 1 "$ATTACHMENTS"); do
+            FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index-1] | .filename")
+            LINK="$TMPMAIL_API_URL?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
+            HTML_LINK="<a href=$LINK download="$FILENAME">$FILENAME</a><br>"
+
+            if [ "$RAW_TEXT" = true ]; then
+                # The actual url is way too long and does not look so nice in STDOUT.
+                # Therefore we will shortening it using 0x0.st so that it looks nicer.
+                LINK=$(curl -s -F"shorten=$LINK" "https://0x0.st")
+                HTML_MAIL="$HTML_MAIL$LINK<br>"
+            else
+                HTML_MAIL="$HTML_MAIL$HTML_LINK"
+            fi
         done
     fi
+
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
     printf %s "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
 
@@ -267,22 +280,6 @@ EOF
     $BROWSER "$TMPMAIL_HTML_EMAIL"
 }
 
-list_attachments () {
-    EMAIL_ID="$1"
-    DATA=$(curl -sL "${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID")
-    if [ "$DATA" = "Message not found" ]; then
-        print_error "Message not found"
-    fi
-    ATTACHMENTSLEN=$(printf %s "$DATA" | jq -r ".attachments | length")
-    MINUS1="$((ATTACHMENTSLEN-1))"
-    printf "%s\n" "[ Attachments in $EMAIL_ID ]"
-    echo
-    for index in $(seq 0 "$MINUS1"); do
-        FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index] | .filename")
-        DOWNLOADURL="${TMPMAIL_API_URL}?action=readMessage&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
-        echo "$DOWNLOADURL"
-    done
-}
 
 view_recent_email() {
     # View the most recent email.
