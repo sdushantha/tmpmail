@@ -65,6 +65,8 @@ shows the email message with specified ID.
         Without this option, HTML is used.
 --version
         Show version
+--update
+        Check if new version of tmpmail is available. If so, update.
 ```
 
 ### Examples

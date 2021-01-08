@@ -62,13 +62,15 @@ shows the email message with specified ID.
         Without this option, HTML is used.
 --version
         Show version
+--update
+        Check if new version of tmpmail is available. If so, update.
 EOF
 }
 
 update () {
     GETNEWVERSION=$(curl -sL https://git.io/tmpmail)
 
-    # We create a new file in order to get the new version of tmpmail
+    # Create a new file in order to get the new version of tmpmail
     printf "%s" "$GETNEWVERSION" > /tmp/tmpmail/tmpmail_newversion
 
     # The user might have put tmpmail into another part of the $PATH
