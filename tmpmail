@@ -76,17 +76,14 @@ update () {
     # The user might have put tmpmail into another part of the $PATH
     TMPMAILPATH=$(which tmpmail)
     CURRENTVERSION=$("$TMPMAILPATH" --version)
-    NEWVERSION=$(sh /tmp/tmpmail/tmpmail_newversion --version)
+    NEWVERSION=$(sh /tmp/tmpmail/tmpmail_newversion --version && rm /tmp/tmpmail/tmpmail_newversion)
 
     # Compare new and old versions
     if [ "$CURRENTVERSION" = "$NEWVERSION" ]; then
-        echo "Version up to date." && exit
+        echo "Version up to date."
     else
         printf "%s" "$GETNEWVERSION" > "$TMPMAILPATH"
     fi
-
-    # Clean up
-    rm /tmp/tmpmail/tmpmail_newversion
 }
 
 generate_email_address() {
