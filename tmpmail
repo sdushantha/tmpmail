@@ -256,7 +256,8 @@ EOF
     if [ ! "$ATTACHMENTS" = "0" ]; then
         HTML_MAIL="$HTML_MAIL<br><b>[Attachments]</b><br>"
 
-        for index in $(seq 1 "$ATTACHMENTS"); do
+        index=1
+        while [ "$index" -le "$ATTACHMENTS" ]; do
             FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index-1] | .filename")
             LINK="$TMPMAIL_API_URL?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
             HTML_LINK="<a href=$LINK download=$FILENAME>$FILENAME</a><br>"
@@ -269,6 +270,8 @@ EOF
             else
                 HTML_MAIL="$HTML_MAIL$HTML_LINK"
             fi
+
+            index=$(( index + 1 ))
         done
     fi
 
