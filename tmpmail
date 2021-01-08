@@ -80,7 +80,7 @@ update () {
 
     # Compare new and old versions
     if [ "$CURRENTVERSION" = "$NEWVERSION" ]; then
-        echo "Version up to date."
+        echo "Version up to date." && exit
     else
         printf "%s" "$GETNEWVERSION" > "$TMPMAILPATH"
     fi
@@ -368,6 +368,7 @@ main() {
             --text | -t) RAW_TEXT=true ;;
             --version) echo "$VERSION" && exit ;;
             --recent | -r) view_recent_email && exit ;;
+            --update) update && exit ;;
             *[0-9]*)
                 # If the user provides number as an argument,
                 # assume its the ID of an email and try getting
