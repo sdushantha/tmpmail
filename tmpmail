@@ -229,10 +229,6 @@ view_email() {
     HTML_BODY=$(printf %s "$DATA" | jq -r ".htmlBody")
     ATTACHMENTS=$(printf %s "$DATA" | jq -r ".attachments | length")
 
-    #printf %s "$DATA" | jq -r ".attachments| .[0] | .filename"
-    #printf %s "$DATA" | jq -r ".attachments| .[1] | .filename"
-    #printf %s "$DATA" | jq -r ".attachments| .[2] | .filename"
-    #exit
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
     [ -z "$HTML_BODY" ] && HTML_BODY="<pre>$(printf %s "$DATA" | jq -r ".textBody")</pre>"
