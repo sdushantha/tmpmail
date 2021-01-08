@@ -82,6 +82,9 @@ update () {
     else
         printf "%s" "$GETNEWVERSION" > "$TMPMAILPATH"
     fi
+
+    # Clean up
+    rm /tmp/tmpmail/tmpmail_newversion
 }
 
 generate_email_address() {
