@@ -101,7 +101,7 @@ generate_email_address() {
     DOMAINS="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com" 
 
     # Randomly pick one of the domains mentiond above.
-    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| shuf -n 1)
+    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| randomize | tail -1)
 
     EMAIL_ADDRESS="$USERNAME@$DOMAIN"
 
@@ -188,7 +188,8 @@ list_emails() {
     #  5
     #
     # We can then put those results into the foor loop
-    for index in $(seq 1 "$DATA_LENGTH"); do
+    index=1
+    while [ $index -le "${DATA_LENGTH}" ]; do
         # Since arrays in JSON data start at 0, we must subtract
         # the value of $index by 1 so that we dont miss one of the
         # emails in the array
@@ -203,10 +204,17 @@ list_emails() {
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
         INBOX="$INBOX$ID ||$FROM ||$SUBJECT\n"
+        index=$(( index + 1 ))
     done
 
     # Show the emails cleanly
     printf "%b" "$INBOX" | column -t -s "||"
+}
+
+# 'shuf' is not part of POSIX, neither is 'sort -R'
+randomize() {
+	awk 'BEGIN {srand();} {print rand(), $0}' | \
+		sort -n -k1 | cut -d' ' -f2
 }
 
 view_email() {
