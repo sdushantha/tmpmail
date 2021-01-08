@@ -255,8 +255,8 @@ EOF
 
             if [ "$RAW_TEXT" = true ]; then
                 # The actual url is way too long and does not look so nice in STDOUT.
-                # Therefore we will shortening it using 0x0.st so that it looks nicer.
-                LINK=$(curl -s -F"shorten=$LINK" "https://0x0.st")
+                # Therefore we will shortening it using is.gd so that it looks nicer.
+                LINK=$(curl -s -F"url=$LINK" "https://is.gd/create.php?format=simple")
                 HTML_MAIL="$HTML_MAIL$LINK<br>"
             else
                 HTML_MAIL="$HTML_MAIL$HTML_LINK"
