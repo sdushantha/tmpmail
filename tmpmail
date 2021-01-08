@@ -227,6 +227,7 @@ view_email() {
     FROM=$(printf %s "$DATA" | jq -r ".from")
     SUBJECT=$(printf %s "$DATA" | jq -r ".subject")
     HTML_BODY=$(printf %s "$DATA" | jq -r ".htmlBody")
+    ATTACHMENTS=$(printf %s "$DATA" | jq -r ".attachments | length")
 
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
@@ -240,8 +241,29 @@ view_email() {
 <b>From: </b>$FROM
 <b>Subject: </b>$SUBJECT</pre>
 $HTML_BODY
+
 EOF
 )
+    
+    if [ ! "$ATTACHMENTS" = "0" ]; then
+        HTML_MAIL="$HTML_MAIL<br><b>[Attachments]</b><br>"
+
+        for index in $(seq 1 "$ATTACHMENTS"); do
+            FILENAME=$(printf %s "$DATA" | jq -r ".attachments | .[$index-1] | .filename")
+            LINK="$TMPMAIL_API_URL?action=download&login=$USERNAME&domain=$DOMAIN&id=$EMAIL_ID&file=$FILENAME"
+            HTML_LINK="<a href=$LINK download=$FILENAME>$FILENAME</a><br>"
+
+            if [ "$RAW_TEXT" = true ]; then
+                # The actual url is way too long and does not look so nice in STDOUT.
+                # Therefore we will shortening it using is.gd so that it looks nicer.
+                LINK=$(curl -s -F"url=$LINK" "https://is.gd/create.php?format=simple")
+                HTML_MAIL="$HTML_MAIL$LINK<br>"
+            else
+                HTML_MAIL="$HTML_MAIL$HTML_LINK"
+            fi
+        done
+    fi
+
     # Save the $HTML_MAIL into $TMPMAIL_HTML_EMAIL
     printf %s "$HTML_MAIL" >"$TMPMAIL_HTML_EMAIL"
 
@@ -253,6 +275,7 @@ EOF
     # this will be 'w3m'.
     $BROWSER "$TMPMAIL_HTML_EMAIL"
 }
+
 
 view_recent_email() {
     # View the most recent email.
