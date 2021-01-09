@@ -309,7 +309,10 @@ print_error() {
 }
 
 main() {
-    # Iterate of the array of dependencies and check if the user has them installed
+    # Iterate of the array of dependencies and check if the user has them installed.
+    # We are checking if $BROWSER is installed instead of checking for 'w3m'. By doing
+    # this, it allows the user to not have to install 'w3m' if they are using another
+    # browser to view the HTML
     for dependency in jq $BROWSER curl; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
             print_error "Could not find '$dependency', is it installed?"
