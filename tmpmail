@@ -83,7 +83,7 @@ generate_email_address() {
     EXTERNALLY=${1:-false}
 
     # This variable lets generate_email_address know if the user has provided a custom
-    # email address which they want to use
+    # email address which they want to use. CUSTOM is set to false if $2 has no value.
     CUSTOM=${2:-false}
 
     # Generate a random email address.
@@ -101,7 +101,7 @@ generate_email_address() {
     DOMAINS="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com" 
 
     # Randomly pick one of the domains mentiond above.
-    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n"| randomize | tail -1)
+    DOMAIN=$(printf "%b" "$DOMAINS" | tr " " "\n" | randomize | tail -1)
 
     EMAIL_ADDRESS="$USERNAME@$DOMAIN"
 
@@ -160,41 +160,13 @@ list_emails() {
     # displayed using 'column'
     INBOX=""
 
-    # This for loop goes through each mail that have been received.
-    #
-    # Since we need to go through all the data, we need to tell our for loop
-    # to loop from 1 to X, where X is legnth of the $DATA which contains all
-    # the emails.
-    #
-    # Normally to loop from 1 to 5, we would use shell expansion and write:
-    #   for index in {1..5}; do
-    #       do_something
-    #   done
-    #
-    # But we a minor issue. We dont know what the final number is, and we are not allowed
-    # use to variables in shell expansions like this:
-    #   {1..$X}
-    #
-    # where $X is the length of the $DATA.
-    #
-    # To fix this issue, we can use 'seq' which will allow us to create a sequence
-    # from X to Y.
-    # Example:
-    #  $ seq 1 5
-    #  1
-    #  2
-    #  3
-    #  4
-    #  5
-    #
-    # We can then put those results into the foor loop
+    # Go through each mail that has been received
     index=1
     while [ $index -le "${DATA_LENGTH}" ]; do
         # Since arrays in JSON data start at 0, we must subtract
         # the value of $index by 1 so that we dont miss one of the
         # emails in the array
         MAIL_DATA=$(printf %s "$DATA" | jq -r ".[$index-1]")
-
         ID=$(printf %s "$MAIL_DATA" | jq -r ".id")
         FROM=$(printf %s "$MAIL_DATA" | jq -r ".from")
         SUBJECT=$(printf %s "$MAIL_DATA" | jq -r ".subject")
@@ -204,15 +176,15 @@ list_emails() {
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
         INBOX="$INBOX$ID ||$FROM ||$SUBJECT\n"
-        index=$(( index + 1 ))
+        index=$((index + 1))
     done
 
     # Show the emails cleanly
     printf "%b" "$INBOX" | column -t -s "||"
 }
 
-# 'shuf' is not part of POSIX, neither is 'sort -R'
 randomize() {
+    # We could use 'shuf' and 'sort -R' but they are not a part of POSIX
 	awk 'BEGIN {srand();} {print rand(), $0}' | \
 		sort -n -k1 | cut -d' ' -f2
 }
@@ -271,7 +243,7 @@ EOF
                 HTML_MAIL="$HTML_MAIL$HTML_LINK"
             fi
 
-            index=$(( index + 1 ))
+            index=$((index + 1))
         done
     fi
 
@@ -337,7 +309,7 @@ main() {
     DOMAIN=${EMAIL_ADDRESS#*@}
 
     # If no arguments are provided just the emails
-    [ $# -eq 0 ] && list_emails  && exit
+    [ $# -eq 0 ] && list_emails && exit
 
     while [ "$1" ]; do
         case "$1" in
