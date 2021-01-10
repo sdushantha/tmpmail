@@ -185,8 +185,8 @@ list_emails() {
 
 randomize() {
     # We could use 'shuf' and 'sort -R' but they are not a part of POSIX
-	awk 'BEGIN {srand();} {print rand(), $0}' | \
-		sort -n -k1 | cut -d' ' -f2
+    awk 'BEGIN {srand();} {print rand(), $0}' | \
+        sort -n -k1 | cut -d' ' -f2
 }
 
 view_email() {
