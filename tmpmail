@@ -123,7 +123,7 @@ generate_email_address() {
 
     # If this function was called because the user wanted to generate a new
     # email address, show them the email address
-    [ "$EXTERNALLY" = true ] && cat "$TMPMAIL_EMAIL_ADDRESS"
+    [ "$EXTERNALLY" = true ] && cat "$TMPMAIL_EMAIL_ADDRESS" && printf "\n"
 }
 
 get_email_address() {
