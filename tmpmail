@@ -98,6 +98,9 @@ generate_email_address() {
     # the first 10 characters, which will be the username of the email address
     USERNAME=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
 
+    VALID_EMAIL_ADDRESS_REGEX="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com)"
+    USERNAME_BLACK_LIST_REGEX="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
+    USERNAME_BLACK_LIST="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
     DOMAINS="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com" 
 
     # Randomly pick one of the domains mentiond above.
@@ -109,11 +112,16 @@ generate_email_address() {
     if [ "$CUSTOM" != false ]; then
         EMAIL_ADDRESS=$CUSTOM
 
+        # Check if the user is using username in the email address which appears
+        # in the black list.
+        if printf %b "$EMAIL_ADDRESS" | grep -Eq "$USERNAME_BLACK_LIST_REGEX"; then
+            print_error "Due to security reason that username cannot be used. Here are the blacklisted usernames:\n$USERNAME_BLACK_LIST"
+        fi
+
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
-        REGEXP="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com)"
-        if ! printf %b "$EMAIL_ADDRESS" | grep -Eq "$REGEXP"; then
-            print_error "Provided email is invalid. Must match $REGEXP"
+        if ! printf %b "$EMAIL_ADDRESS" | grep -Eq "$VALID_EMAIL_ADDRESS_REGEX"; then
+            print_error "Provided email is invalid. Must match $VALID_EMAIL_ADDRESS_REGEX"
         fi
     fi
 
@@ -276,7 +284,7 @@ print_error() {
     #
     # The first argument provided to this function will be the error message.
     # Script will exit after printing the error message.
-    printf "%s\n" "Error: $1" >&2
+    printf "%b\n" "Error: $1" >&2
     exit 1
 }
 
