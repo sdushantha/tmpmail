@@ -115,7 +115,7 @@ generate_email_address() {
         # Check if the user is using username in the email address which appears
         # in the black list.
         if printf %b "$EMAIL_ADDRESS" | grep -Eq "$USERNAME_BLACK_LIST_REGEX"; then
-            print_error "Due to security reason that username cannot be used. Here are the blacklisted usernames:\n$USERNAME_BLACK_LIST"
+            print_error "For security reasons, that username cannot be used. Here are the blacklisted usernames:\n$USERNAME_BLACK_LIST"
         fi
 
         # Do a regex check to see if the email address provided by the user is a
