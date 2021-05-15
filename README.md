@@ -38,6 +38,11 @@ $ mv tmpmail ~/bin/
 $ yay -S tmpmail-git
 ```
 
+### Nixpkgs
+`tmpmail` is also available in the [nix package collection (only unstable currently)](https://search.nixos.org/packages?channel=unstable&show=tmpmail&from=0&size=50&sort=relevance&query=tmpmail), which is maintained by [legendofmiracles](https://github.com/legendofmiracles)
+
+Either add it to your system packages, install it with nix-env or try it out in a ephemeral nix-shell `nix-shell -p tmpmail`
+
 ## Usage
 ```console
 $ tmpmail --help
