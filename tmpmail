@@ -5,7 +5,7 @@
 # Dependencies: jq, curl, w3m
 #
 
-version=1.1.8
+version=1.1.9
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
