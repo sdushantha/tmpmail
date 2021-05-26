@@ -178,12 +178,13 @@ list_emails() {
         id=$(printf %s "$mail_data" | jq -r ".id")
         from=$(printf %s "$mail_data" | jq -r ".from")
         subject=$(printf %s "$mail_data" | jq -r ".subject")
+        date=$(printf %s "$mail_data" | jq -r ".date")
 
         # The '||' are used as a divideder for 'column'. 'column' will use this divider as
         # a point of reference to create the division. By default 'column' uses a blank space
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
-        inbox="$inbox$id ||$from ||$subject\n"
+        inbox="$inbox$id ||$from ||$subject ||$date\n"
         index=$((index + 1))
     done
 
@@ -215,8 +216,9 @@ view_email() {
     from=$(printf %s "$data" | jq -r ".from")
     subject=$(printf %s "$data" | jq -r ".subject")
     html_body=$(printf %s "$data" | jq -r ".htmlBody")
+    date=$(printf %s "$data" | jq -r ".date")
     attachments=$(printf %s "$data" | jq -r ".attachments | length")
-    
+
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
     [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r ".textBody")</pre>"
@@ -227,7 +229,8 @@ view_email() {
     html_mail=$(cat <<EOF
 <pre><b>To: </b>$email_address
 <b>From: </b>$from
-<b>Subject: </b>$subject</pre>
+<b>Subject: </b>$subject
+<b>Date: </b>$date</pre>
 $html_body
 
 EOF
