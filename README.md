@@ -43,6 +43,18 @@ $ yay -S tmpmail-git
 
 Either add it to your system packages, install it with nix-env or try it out in a ephemeral nix-shell `nix-shell -p tmpmail`
 
+### Docker
+
+requirements:
+ - [docker](https://www.docker.com/)
+ - clone this repo
+
+```bash                                                                                        
+$ docker build -t mail .; # Dockerfile available in source code
+$ docker run -it mail /bin/bash; 
+# tmpmail; # already inside a docker container
+```   
+
 ## Usage
 ```console
 $ tmpmail --help
