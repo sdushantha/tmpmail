@@ -52,7 +52,6 @@ requirements:
 ```bash                                                                                        
 $ docker build -t mail .; # Dockerfile available in source code
 $ docker run -it mail /bin/bash; 
-root@xyz:/# tmpmail; # already inside a docker container
 ```   
 
 ## Usage
