@@ -115,13 +115,13 @@ generate_email_address() {
         # Check if the user is using username in the email address which appears
         # in the black list.
         if printf %b "$email_address" | grep -Eq "$username_black_list_regex"; then
-            print_error "For security reasons, that username cannot be used. Here are the blacklisted usernames:\n$username_black_list"
+            die "For security reasons, that username cannot be used. Here are the blacklisted usernames:\n$username_black_list"
         fi
 
         # Do a regex check to see if the email address provided by the user is a
         # valid email address
         if ! printf %b "$email_address" | grep -Eq "$valid_email_address_regex"; then
-            print_error "Provided email is invalid. Must match $valid_email_address_regex"
+            die "Provided email is invalid. Must match $valid_email_address_regex"
         fi
     fi
 
@@ -209,7 +209,7 @@ view_email() {
     # Luckily 1secmail's API is not complicated and returns 'Message not found' as plain text
     # if our email address as not received any emails.
     # If we received the error message from the API just quit because there is nothing to do
-    [ "$data" = "Message not found" ] && print_error "Message not found"
+    [ "$data" = "Message not found" ] && die "Message not found"
 
     # We pass the $data to 'jq' which extracts the values
     from=$(printf %s "$data" | jq -r ".from")
@@ -279,8 +279,8 @@ view_recent_email() {
     view_email "$mail_id"
 }
 
-print_error() {
-    # Print error message
+die() {
+    # Print error message and exit
     #
     # The first argument provided to this function will be the error message.
     # Script will exit after printing the error message.
@@ -292,12 +292,22 @@ main() {
     # Iterate of the array of dependencies and check if the user has them installed.
     # We are checking if $browser is installed instead of checking for 'w3m'. By doing
     # this, it allows the user to not have to install 'w3m' if they are using another
-    # browser to view the HTML
-    for dependency in jq $browser curl; do
+    # browser to view the HTML.
+    #
+    # dep_missing allows us to keep track of how many dependencies the user is missing
+    # and then print out the missing dependencies once the checking is done.
+    dep_missing=""
+    for dependency in jq $browser curl hackerman kko; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
-            print_error "Could not find '$dependency', is it installed?"
+            # Append to our list of missing dependencies
+            dep_missing="$dep_missing $dependency"
         fi
     done
+
+    if [ "${#dep_missing}" -gt 0 ]; then
+        printf %s "Could not find the following dependencies:$dep_missing"
+        exit 1
+    fi
 
     # Create the $tmpmail_dir directory and dont throw any errors
     # if it already exists
@@ -333,7 +343,7 @@ main() {
                 # the email that belongs to the ID
                 view_email "$1" && exit
                 ;;
-            -*) print_error "option '$1' does not exist" ;;
+            -*) die "option '$1' does not exist" ;;
         esac
         shift
     done
