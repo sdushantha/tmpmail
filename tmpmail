@@ -297,7 +297,7 @@ main() {
     # dep_missing allows us to keep track of how many dependencies the user is missing
     # and then print out the missing dependencies once the checking is done.
     dep_missing=""
-    for dependency in jq $browser curl hackerman kko; do
+    for dependency in jq $browser curl; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
             # Append to our list of missing dependencies
             dep_missing="$dep_missing $dependency"
