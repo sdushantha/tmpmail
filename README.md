@@ -38,6 +38,13 @@ $ mv tmpmail ~/bin/
 $ yay -S tmpmail-git
 ```
 
+### [Pacstall](https://github.com/pacstall/pacstall) (Debian/Ubuntu)
+`tmpmail` is available on the [pacstall-programs repository](https://github.com/pacstall/pacstall-programs/blob/master/packages/tmpmail-bin/tmpmail-bin.pacscript), which is being currently being maintained by [wizard-28](https://github.com/wizard-28)
+
+```
+$ pacstall -I tmpmail-bin
+```
+
 ### Nixpkgs
 `tmpmail` is also available in the [nix package collection (only unstable currently)](https://search.nixos.org/packages?channel=unstable&show=tmpmail&from=0&size=50&sort=relevance&query=tmpmail), which is maintained by [legendofmiracles](https://github.com/legendofmiracles)
 
