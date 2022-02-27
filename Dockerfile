@@ -1,11 +1,8 @@
-FROM ubuntu
+FROM alpine
 
-RUN apt-get update 
+RUN apk -U upgrade
 
-RUN apt-get upgrade -y
-
-RUN apt-get install -y curl jq w3m \ 
-  bsdmainutils # for "columns" binary
+RUN apk --no-cache add curl jq w3m
 
 
 RUN curl -L "https://git.io/tmpmail" > tmpmail && chmod +x tmpmail
