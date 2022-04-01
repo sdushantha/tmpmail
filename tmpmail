@@ -11,6 +11,10 @@ version=1.1.9
 # the HTML of the email
 browser="w3m"
 
+# The default command that will be used to copy the email address to
+# the user's clipboard when running 'tmpmail --copy'
+copy_to_clipboard_cmd="xclip -selection c"
+
 # If the value is set to 'true' tmpmail will convert the HTML email
 # to raw text and send that to stdout
 raw_text=false
@@ -48,8 +52,13 @@ the inbox and their numeric IDs.  When called with one argument, tmpmail
 shows the email message with specified ID.
 
 -b, --browser BROWSER
-        Specify BROWSER (default: w3m) that is used to render the HTML of
-        the email
+        Specify BROWSER that is used to render the HTML of
+        the email (default: w3m)
+    --clipboard-cmd COMMAND
+        Specify the COMMAND to use for copying the email address to your
+        clipboard (default: xclip -selection c)
+-c, --copy
+        Copy the email address to your clipboard
 -g, --generate [ADDRESS]
         Generate a new email address, either the specified ADDRESS, or
         randomly create one
@@ -279,6 +288,11 @@ view_recent_email() {
     view_email "$mail_id"
 }
 
+copy_email_to_clipboard(){
+    # Copy the email thats being used to the user's clipboard
+    cat $tmpmail_email_address | $copy_to_clipboard_cmd
+}
+
 die() {
     # Print error message and exit
     #
@@ -297,7 +311,15 @@ main() {
     # dep_missing allows us to keep track of how many dependencies the user is missing
     # and then print out the missing dependencies once the checking is done.
     dep_missing=""
-    for dependency in jq $browser curl; do
+
+    # The main command from $copy_to_clipboard_cmd
+    # Example:
+    #   xclip -selection c
+    #   ├───┘
+    #   └ This part
+    clipboard=${copy_to_clipboard_cmd%% *}
+
+    for dependency in jq $browser $clipboard curl; do
         if ! command -v "$dependency" >/dev/null 2>&1; then
             # Append to our list of missing dependencies
             dep_missing="$dep_missing $dependency"
@@ -333,6 +355,8 @@ main() {
         case "$1" in
             --help | -h) usage && exit ;;
             --generate | -g) generate_email_address true "$2" && exit ;;
+            --clipboard-cmd) copy_to_clipboard_cmd="$2" ;;
+            --copy | -c) copy_email_to_clipboard && exit ;;
             --browser | -b) browser="$2" ;;
             --text | -t) raw_text=true ;;
             --version) echo "$version" && exit ;;
