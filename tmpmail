@@ -290,7 +290,7 @@ view_recent_email() {
 
 copy_email_to_clipboard(){
     # Copy the email thats being used to the user's clipboard
-    cat $tmpmail_email_address | $copy_to_clipboard_cmd
+    $copy_to_clipboard_cmd < $tmpmail_email_address
 }
 
 die() {
