@@ -74,8 +74,13 @@ the inbox and their numeric IDs.  When called with one argument, tmpmail
 shows the email message with specified ID.
 
 -b, --browser BROWSER
-        Specify BROWSER (default: w3m) that is used to render the HTML of
-        the email
+        Specify BROWSER that is used to render the HTML of
+        the email (default: w3m)
+    --clipboard-cmd COMMAND
+        Specify the COMMAND to use for copying the email address to your
+        clipboard (default: xclip -selection c)
+-c, --copy
+        Copy the email address to your clipboard
 -g, --generate [ADDRESS]
         Generate a new email address, either the specified ADDRESS, or
         randomly create one
