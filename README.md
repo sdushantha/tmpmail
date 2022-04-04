@@ -19,6 +19,7 @@ use the `--browser` argument followed by the command needed to launch the web br
 - `w3m`
 - `curl`
 - [`jq`](https://github.com/stedolan/jq)
+- `xclip`
 
 ## Installation
 ### Install locally
@@ -58,7 +59,7 @@ requirements:
 
 ```bash                                                                                        
 $ docker build -t mail .; # Dockerfile available in source code
-$ docker run -it mail /bin/bash; 
+$ docker run -it mail;
 ```   
 
 ## Usage
