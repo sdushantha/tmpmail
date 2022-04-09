@@ -5,7 +5,7 @@
 # Dependencies: jq, curl, w3m
 #
 
-version=1.2.0
+version=1.2.1
 
 # By default 'tmpmail' uses 'w3m' as it's web browser to render
 # the HTML of the email
@@ -288,10 +288,12 @@ view_recent_email() {
     view_email "$mail_id"
 }
 
+
 copy_email_to_clipboard(){
     # Copy the email thats being used to the user's clipboard
     $copy_to_clipboard_cmd < $tmpmail_email_address
 }
+
 
 die() {
     # Print error message and exit
