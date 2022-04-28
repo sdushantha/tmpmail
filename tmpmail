@@ -86,11 +86,11 @@ get_list_of_domains() {
     # has not received any emails yet.
     [ "$data_length" -eq 0 ] && echo "1secmail API error for getting domains list" && exit
     # Getting rid of quotes, braces and replace comma with space
-    domains=$(printf "${data//[\"\[\]]/}" | tr "," " ")
+    printf "${data//[\"\[\]]/}" | tr "," " "
 }
 
 show_list_of_domains() {
-    get_list_of_domains
+    domains=$(get_list_of_domains)
     printf "List of available domains: \n%s\n" "${domains//\ /$'\n'}"
 }
 
@@ -132,7 +132,7 @@ generate_email_address() {
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
 
     # Getting list of available domains into $domains variable
-    get_list_of_domains
+    domains=$(get_list_of_domains)
 
     # Randomly pick one of the domains mentioned above.
     domain=$(printf "%b" "$domains" | tr " " "\n" | randomize | tail -1)
