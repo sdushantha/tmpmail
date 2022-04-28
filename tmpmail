@@ -59,6 +59,8 @@ shows the email message with specified ID.
         clipboard (default: xclip -selection c)
 -c, --copy
         Copy the email address to your clipboard
+-d, --domains
+        Show list of available domains
 -g, --generate [ADDRESS]
         Generate a new email address, either the specified ADDRESS, or
         randomly create one
@@ -72,6 +74,24 @@ shows the email message with specified ID.
 --version
         Show version
 EOF
+}
+
+get_list_of_domains() {
+    # Getting domains list from 1secmail API
+    data=$(curl -sL "$tmpmail_api_url?action=getDomainList") 
+    # Number of available domains
+    data_length=$(printf %s "$data" | jq length)
+
+    # If the length of the data we got is 0, that means the email address
+    # has not received any emails yet.
+    [ "$data_length" -eq 0 ] && echo "1secmail API error for getting domains list" && exit
+    # Getting rid of quotes, braces and replace comma with space
+    domains=$(printf "${data//[\"\[\]]/}" | tr "," " ")
+}
+
+show_list_of_domains() {
+    get_list_of_domains
+    printf "List of available domains: \n%s\n" "${domains//\ /$'\n'}"
 }
 
 generate_email_address() {
@@ -110,7 +130,9 @@ generate_email_address() {
     valid_email_address_regex="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com|xojxe.com|yoggm.com)"
     username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
-    domains="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com xojxe.com yoggm.com" 
+
+    # Getting list of available domains into $domains variable
+    get_list_of_domains
 
     # Randomly pick one of the domains mentioned above.
     domain=$(printf "%b" "$domains" | tr " " "\n" | randomize | tail -1)
@@ -356,6 +378,7 @@ main() {
     while [ "$1" ]; do
         case "$1" in
             --help | -h) usage && exit ;;
+            --domains | -d) show_list_of_domains && exit ;;
             --generate | -g) generate_email_address true "$2" && exit ;;
             --clipboard-cmd) copy_to_clipboard_cmd="$2" ;;
             --copy | -c) copy_email_to_clipboard && exit ;;
