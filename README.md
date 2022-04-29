@@ -82,6 +82,8 @@ shows the email message with specified ID.
         clipboard (default: xclip -selection c)
 -c, --copy
         Copy the email address to your clipboard
+-d, --domains
+        Show list of available domains
 -g, --generate [ADDRESS]
         Generate a new email address, either the specified ADDRESS, or
         randomly create one
