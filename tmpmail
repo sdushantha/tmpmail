@@ -110,7 +110,7 @@ generate_email_address() {
     valid_email_address_regex="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com|xojxe.com|yoggm.com)"
     username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
-    domains="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com xojxe.com yoggm.com" 
+    domains="1secmail.com 1secmail.net 1secmail.org esiix.com wwjmp.com xojxe.com yoggm.com"
 
     # Randomly pick one of the domains mentioned above.
     domain=$(printf "%b" "$domains" | tr " " "\n" | randomize | tail -1)
@@ -158,46 +158,14 @@ get_email_address() {
 list_emails() {
     # List all the received emails in a nicely formatted order
     #
-    # Fetch the email data using 1secmail's API
-    data=$(curl -sL "$tmpmail_api_url?action=getMessages&login=$username&domain=$domain")
-
-    # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
-    # the email address has gotten any emails
-    data_length=$(printf %s "$data" | jq length)
-
-    # We are showing what email address is currently being used
-    # in case the user has forgotten what the email address was.
-    printf "[ Inbox for %s ]\n\n" "$email_address"
-
-    # If the length of the data we got is 0, that means the email address
-    # has not received any emails yet.
-    [ "$data_length" -eq 0 ] && echo "No new mail" && exit
-
-    # This is where we store all of our emails, which is then
-    # displayed using 'column'
-    inbox=""
-
-    # Go through each mail that has been received
-    index=1
-    while [ $index -le "${data_length}" ]; do
-        # Since arrays in JSON data start at 0, we must subtract
-        # the value of $index by 1 so that we dont miss one of the
-        # emails in the array
-        mail_data=$(printf %s "$data" | jq -r ".[$index-1]")
-        id=$(printf %s "$mail_data" | jq -r ".id")
-        from=$(printf %s "$mail_data" | jq -r ".from")
-        subject=$(printf %s "$mail_data" | jq -r ".subject")
-
-        # The '||' are used as a divideder for 'column'. 'column' will use this divider as
-        # a point of reference to create the division. By default 'column' uses a blank space
-        # but that would not work in our case as the email subject could have multiple white spaces
-        # and 'column' would split the words that are seperated by white space, in different columns.
-        inbox="$inbox$id ||$from ||$subject\n"
-        index=$((index + 1))
-    done
-
-    # Show the emails cleanly
-    printf "%b" "$inbox" | column -t -s "||"
+    curl -sL "$tmpmail_api_url?action=getMessages&login=$username&domain=$domain" \
+    | jq -r '
+        if (length > 0) then
+            .[] | "\(.id)||\(.from)||\(.subject)"
+        else
+            "No new mail"
+        end' \
+    | column -t -s "||"
 }
 
 randomize() {
@@ -220,52 +188,48 @@ view_email() {
     # If we received the error message from the API just quit because there is nothing to do
     [ "$data" = "Message not found" ] && die "Message not found"
 
-    # We pass the $data to 'jq' which extracts the values
-    from=$(printf %s "$data" | jq -r ".from")
-    subject=$(printf %s "$data" | jq -r ".subject")
-    html_body=$(printf %s "$data" | jq -r ".htmlBody")
-    attachments=$(printf %s "$data" | jq -r ".attachments | length")
-    
+    url="$tmpmail_api_url?action=download&login=$username&domain=$domain&id=$email_id"
+
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
-    [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r ".textBody")</pre>"
+    printf %s "$data" | jq -M -r \
+        --arg to "$email_address" \
+        --arg url "$url" \
+        --arg raw "$raw_text" \
+    '''
+        "<pre><b>To:</b> \($to)",
+        "<b>From:</b> \(.from)",
+        "<b>Subject:</b> \(.subject)</pre>",
 
-    # Create the HTML with all the information that is relevant and then
-    # assigning that HTML to the variable html_mail. This is the best method
-    # to create a multiline variable
-    html_mail=$(cat <<EOF
-<pre><b>To: </b>$email_address
-<b>From: </b>$from
-<b>Subject: </b>$subject</pre>
-$html_body
+        if (.htmlBody == "") then
+            "<pre>\(.textBody)</pre>"
+        else
+            .htmlBody
+        end,
 
-EOF
-)
-    
-    if [ ! "$attachments" = "0" ]; then
-        html_mail="$html_mail<br><b>[Attachments]</b><br>"
+        if (.attachments | length > 0) then
+            "<br><b>[Attachments]</b><br>"
+        else
+            empty
+        end,
 
-        index=1
-        while [ "$index" -le "$attachments" ]; do
-            filename=$(printf %s "$data" | jq -r ".attachments | .[$index-1] | .filename")
-            link="$tmpmail_api_url?action=download&login=$username&domain=$domain&id=$email_id&file=$filename"
-            html_link="<a href=$link download=$filename>$filename</a><br>"
+        if (.attachments | length > 0 and $raw != "true") then
+            .attachments[] | "<a href=\($url)&file=\(.filename) download=\(.filename)>\(.filename)</a><br>"
+        else
+            empty
+        end
+    ''' >"$tmpmail_html_email"
 
-            if [ "$raw_text" = true ]; then
-                # The actual url is way too long and does not look so nice in STDOUT.
-                # Therefore we will shortening it using is.gd so that it looks nicer.
-                link=$(curl -s -F"url=$link" "https://is.gd/create.php?format=simple")
-                html_mail="$html_mail$link  [$filename]<br>"
-            else
-                html_mail="$html_mail$html_link"
-            fi
-
-            index=$((index + 1))
-        done
+    # Shorten URLs in raw text mode
+    if [ "$raw_text" = true ]; then
+        printf %s "$data" | jq -r '.attachments[] | .filename' | while read -r filename; do
+            link="$url&file=$filename"
+            # The actual url is way too long and does not look so nice in STDOUT.
+            # Therefore we will shortening it using is.gd so that it looks nicer.
+            link=$(curl -s -F"url=$link" "https://is.gd/create.php?format=simple")
+            printf '%s [%s]<br>\n' "$link" "$filename"
+        done >>"$tmpmail_html_email"
     fi
-
-    # Save the $html_mail into $tmpmail_html_email
-    printf %s "$html_mail" >"$tmpmail_html_email"
 
     # If the '--text' flag is used, then use 'w3m' to convert the HTML of
     # the email to pure text by removing all the HTML tags
