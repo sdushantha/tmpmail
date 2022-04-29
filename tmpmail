@@ -85,13 +85,14 @@ get_list_of_domains() {
     # If the length of the data we got is 0, that means the email address
     # has not received any emails yet.
     [ "$data_length" -eq 0 ] && echo "1secmail API error for getting domains list" && exit
+
     # Getting rid of quotes, braces and replace comma with space
-    printf "${data//[\"\[\]]/}" | tr "," " "
+    printf "%s" "$data" | tr -d "[|]|\"" | tr "," " "
 }
 
 show_list_of_domains() {
-    domains=$(get_list_of_domains)
-    printf "List of available domains: \n%s\n" "${domains//\ /$'\n'}"
+    domains=$(printf "%s" "$(get_list_of_domains)" | tr " " "\n")
+    printf "List of available domains: \n%s\n" "$domains"
 }
 
 generate_email_address() {
@@ -129,8 +130,8 @@ generate_email_address() {
 
     # Getting list of available domains into $domains variable
     domains=$(get_list_of_domains)
-    
-    valid_email_address_regex="[a-z0-9]+@(${domains//\ /\|})"
+
+    valid_email_address_regex=$(printf "[a-z0-9]+@%s" "$domains" | tr " " "|")
     username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
 
