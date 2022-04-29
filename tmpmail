@@ -127,12 +127,12 @@ generate_email_address() {
     # the first 10 characters, which will be the username of the email address
     username=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
 
-    valid_email_address_regex="[a-z0-9]+@(1secmail\.(com|net|org)|esiix.co|wwjmp.com|xojxe.com|yoggm.com)"
-    username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
-    username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
-
     # Getting list of available domains into $domains variable
     domains=$(get_list_of_domains)
+    
+    valid_email_address_regex="[a-z0-9]+@(${domains//\ /\|})"
+    username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
+    username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
 
     # Randomly pick one of the domains mentioned above.
     domain=$(printf "%b" "$domains" | tr " " "\n" | randomize | tail -1)
