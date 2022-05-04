@@ -79,6 +79,7 @@ EOF
 get_list_of_domains() {
     # Getting domains list from 1secmail API
     data=$(curl -sL "$tmpmail_api_url?action=getDomainList") 
+
     # Number of available domains
     data_length=$(printf %s "$data" | jq length)
 
@@ -91,7 +92,9 @@ get_list_of_domains() {
 }
 
 show_list_of_domains() {
-    domains=$(printf "%s" "$(get_list_of_domains)" | tr " " "\n")
+    # Convert the list of domains which are in a singal line, into multiple lines
+    # with a dash in the beginning of each domain for a clean output
+    domains=$(printf "%s" "$(get_list_of_domains)" | tr " " "\n" | sed "s/^/- /g")
     printf "List of available domains: \n%s\n" "$domains"
 }
 
@@ -128,10 +131,8 @@ generate_email_address() {
     # the first 10 characters, which will be the username of the email address
     username=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
 
-    # Getting list of available domains into $domains variable
-    domains=$(get_list_of_domains)
-
-    valid_email_address_regex=$(printf "[a-z0-9]+@%s" "$domains" | tr " " "|")
+    # Generate a regex for valif email adress by fetching the list of supported domains
+    valid_email_address_regex=$(printf "[a-z0-9]+@%s" "$(get_list_of_domains | tr ' ' '|')")
     username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
 
