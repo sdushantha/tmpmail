@@ -137,7 +137,7 @@ generate_email_address() {
     username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
 
     # Randomly pick one of the domains mentioned above.
-    domain=$(printf "%b" "$domains" | tr " " "\n" | randomize | tail -1)
+    domain=$(printf "%b" "$(get_list_of_domains)" | tr " " "\n" | randomize | tail -1)
 
     email_address="$username@$domain"
 
