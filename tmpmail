@@ -188,6 +188,14 @@ list_emails() {
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
     data_length=$(printf %s "$data" | jq length)
+		# Validate data length
+		if [ -n "$data_length" ]; then
+			printf "Number of new messages undefined. It is possible the home server could not be reached.\n"
+			# cast it to 0 if that is the case.
+			data_length="${data_length:=0}"
+		else
+			echo "First parameter not supplied."
+		fi
 
     # We are showing what email address is currently being used
     # in case the user has forgotten what the email address was.
