@@ -22,7 +22,7 @@ raw_text=false
 # Everything related to 'tmpmail' will be stored in /tmp/tmpmail
 # so that the old emails and email addresses get cleared after
 # restarting the computer
-tmpmail_dir="/tmp/tmpmail"
+tmpmail_dir="${TMPDIR:-/tmp}/tmpmail"
 
 # tmpmail_email_address is where we store the temporary email address
 # that gets generated. This prevents the user from providing
@@ -78,7 +78,7 @@ EOF
 
 get_list_of_domains() {
     # Getting domains list from 1secmail API
-    data=$(curl -sL "$tmpmail_api_url?action=getDomainList") 
+    data=$(curl -sL "$tmpmail_api_url?action=getDomainList")
 
     # Number of available domains
     data_length=$(printf %s "$data" | jq length)
@@ -249,7 +249,7 @@ view_email() {
     subject=$(printf %s "$data" | jq -r ".subject")
     html_body=$(printf %s "$data" | jq -r ".htmlBody")
     attachments=$(printf %s "$data" | jq -r ".attachments | length")
-    
+
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
     [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r ".textBody")</pre>"
@@ -265,7 +265,7 @@ $html_body
 
 EOF
 )
-    
+
     if [ ! "$attachments" = "0" ]; then
         html_mail="$html_mail<br><b>[Attachments]</b><br>"
 
