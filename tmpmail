@@ -1,4 +1,7 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
+source ./config.txt
+[ -z "$APIKEY" ] && echo "Missing API Key. Please specify APIKey in config.txt" && exit
+	
 #
 # by Siddharth Dushantha 2020
 #
@@ -11,10 +14,6 @@ version=1.2.3
 # the HTML of the email
 browser="w3m"
 
-# The default command that will be used to copy the email address to
-# the user's clipboard when running 'tmpmail --copy'
-copy_to_clipboard_cmd="xclip -selection c"
-
 # If the value is set to 'true' tmpmail will convert the HTML email
 # to raw text and send that to stdout
 raw_text=false
@@ -24,10 +23,10 @@ raw_text=false
 # restarting the computer
 tmpmail_dir="/tmp/tmpmail"
 
-# tmpmail_email_address is where we store the temporary email address
-# that gets generated. This prevents the user from providing
-# the email address everytime they run tmpmail
-tmpmail_email_address="$tmpmail_dir/email_address"
+# The default command that will be used to copy the activation code to
+# the user's clipboard 
+copy_to_clipboard_cmd="xclip -selection c"
+
 
 # tmpmail.html is where the email gets stored.
 # Even though the file ends with a .html extension, the raw text version of
@@ -35,8 +34,9 @@ tmpmail_email_address="$tmpmail_dir/email_address"
 # are able to open this file
 tmpmail_html_email="$tmpmail_dir/tmpmail.html"
 
+
 # Default 1secmail API URL
-tmpmail_api_url="https://www.1secmail.com/api/v1/"
+tmpmail_api_url="https://emptyinbox.me/api"
 
 usage() {
     # Using 'cat << EOF' we can easily output a multiline text. This is much
@@ -44,7 +44,9 @@ usage() {
     cat <<EOF
 tmpmail
 tmpmail -h | --version
-tmpmail -g [ADDRESS]
+tmpmail -g 
+tmpmail -l
+tmpmail [--clipboard-cmd COMMAND] -a
 tmpmail [-t | -b BROWSER] -r | ID
 
 When called with no option and no argument, tmpmail lists the messages in
@@ -55,15 +57,14 @@ shows the email message with specified ID.
         Specify BROWSER that is used to render the HTML of
         the email (default: w3m)
     --clipboard-cmd COMMAND
-        Specify the COMMAND to use for copying the email address to your
+        Specify the COMMAND to use for copying the activation code to your
         clipboard (default: xclip -selection c)
--c, --copy
-        Copy the email address to your clipboard
--d, --domains
-        Show list of available domains
--g, --generate [ADDRESS]
-        Generate a new email address, either the specified ADDRESS, or
-        randomly create one
+-l, --list
+        Show list of available inboxes
+-g, --generate 
+        Generate a new email inbox        
+-a, --acode
+        Auto Detect and copy activation code from recent email  
 -h, --help
         Show help
 -r, --recent
@@ -76,122 +77,43 @@ shows the email message with specified ID.
 EOF
 }
 
-get_list_of_domains() {
-    # Getting domains list from 1secmail API
-    data=$(curl -sL "$tmpmail_api_url?action=getDomainList") 
 
-    # Number of available domains
-    data_length=$(printf %s "$data" | jq length)
-
-    # If the length of the data we got is 0, that means the email address
-    # has not received any emails yet.
-    [ "$data_length" -eq 0 ] && echo "1secmail API error for getting domains list" && exit
-
-    # Getting rid of quotes, braces and replace comma with space
-    printf "%s" "$data" | tr -d "[|]|\"" | tr "," " "
+list_inboxes() {
+    data=$(call_api inboxes)
+    out=$(printf "%s" "$data" | jq -r '.[].inbox')
+    echo "$out"
 }
 
-show_list_of_domains() {
-    # Convert the list of domains which are in a singal line, into multiple lines
-    # with a dash in the beginning of each domain for a clean output
-    domains=$(printf "%s" "$(get_list_of_domains)" | tr " " "\n" | sed "s/^/- /g")
-    printf "List of available domains: \n%s\n" "$domains"
+generate_inbox() {
+    data=$(curl -d'{}' -sL "$tmpmail_api_url/inbox" -H "Authorization:Bearer $APIKEY")
+    echo $data
 }
 
-generate_email_address() {
-    # There are 2 ways which this function is called in this script.
-    #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
-    #  [2] The user runs 'tmpmail' to check the inbox , but /tmp/tmpmail/email_address
-    #      is empty or nonexistant. Therefore a new email gets automatically
-    #      generated before showing the inbox. But of course the inbox will
-    #      be empty as the newly generated email address has not been
-    #      sent any emails.
-    #
-    # When the function 'generate_email_address()' is called with the arguement
-    # 'true', it means that the function was called because the user
-    # ran 'tmpmail --generate'.
-    #
-    # We need this variable so we can know whether or not we need to show the user
-    # what the email was. <-- More about this can be found further down in this function.
-    externally=${1:-false}
+trap "exit 1" TERM
+TOP_PID=$$
 
-    # This variable lets generate_email_address know if the user has provided a custom
-    # email address which they want to use. custom is set to false if $2 has no value.
-    custom=${2:-false}
 
-    # Generate a random email address.
-    # This function is called whenever the user wants to generate a new email
-    # address by running 'tmpmail --generate' or when the user runs 'tmpmail'
-    # but /tmp/tmpmail/email_address is empty or nonexistent.
-    #
-    # We create a random username by taking the first 10 lines from /dev/random
-    # and delete all the characters which are *not* lower case letters from A to Z.
-    # So charcters such as dashes, periods, underscore, and numbers are all deleted,
-    # giving us a text which only contains lower case letters form A to Z. We then take
-    # the first 10 characters, which will be the username of the email address
-    username=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
+call_api() {
+    # Fetch the email data using inboxme API and exit script if got abnormal http code
+    response=$(curl -w "\n%{http_code}" -sL "$tmpmail_api_url/$1" -H "Authorization:Bearer $APIKEY")
+    http_code=$(tail -n1 <<< "$response")  # get the last line
+    data=$(sed '$ d' <<< "$response")   # get all but the last line which contains the status code
 
-    # Generate a regex for valif email adress by fetching the list of supported domains
-    valid_email_address_regex=$(printf "[a-z0-9]+@%s" "$(get_list_of_domains | tr ' ' '|')")
-    username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
-    username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
-
-    # Randomly pick one of the domains mentioned above.
-    domain=$(printf "%b" "$(get_list_of_domains)" | tr " " "\n" | randomize | tail -1)
-
-    email_address="$username@$domain"
-
-    # If the user provided a custom email address then use that email address
-    if [ "$custom" != false ]; then
-        email_address=$custom
-
-        # Check if the user is using username in the email address which appears
-        # in the black list.
-        if printf %b "$email_address" | grep -Eq "$username_black_list_regex"; then
-            die "For security reasons, that username cannot be used. Here are the blacklisted usernames:\n$username_black_list"
-        fi
-
-        # Do a regex check to see if the email address provided by the user is a
-        # valid email address
-        if ! printf %b "$email_address" | grep -Eq "$valid_email_address_regex"; then
-            die "Provided email is invalid. Must match $valid_email_address_regex"
-        fi
-    fi
-
-    # Save the generated email address to the $tmpmail_email_address file
-    # so that it can be whenever 'tmpmail' is run
-    printf %s "$email_address" >"$tmpmail_email_address"
-
-    # If this function was called because the user wanted to generate a new
-    # email address, show them the email address
-    [ "$externally" = true ] && cat "$tmpmail_email_address" && printf "\n"
-}
-
-get_email_address() {
-    # This function is only called once and that is when this script
-    # get executed. The output of this function gets stored in $email_address
-    #
-    # If the file that contains the email address is empty,
-    # that means we do not have an email address, so generate one.
-    [ ! -s "$tmpmail_email_address" ] && generate_email_address
-
-    # Output the email address by getting the first line of $tmpmail_email
-    head -n 1 "$tmpmail_email_address"
+    if [ "$http_code" -gt 400 ]; then
+	    echo "$data" 1>&2
+	    kill -s TERM $TOP_PID
+    fi 	    
+    echo $data
 }
 
 list_emails() {
     # List all the received emails in a nicely formatted order
     #
-    # Fetch the email data using 1secmail's API
-    data=$(curl -sL "$tmpmail_api_url?action=getMessages&login=$username&domain=$domain")
+    data=$(call_api messages) 
 
     # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
     # the email address has gotten any emails
     data_length=$(printf %s "$data" | jq length)
-
-    # We are showing what email address is currently being used
-    # in case the user has forgotten what the email address was.
-    printf "[ Inbox for %s ]\n\n" "$email_address"
 
     # If the length of the data we got is 0, that means the email address
     # has not received any emails yet.
@@ -209,14 +131,14 @@ list_emails() {
         # emails in the array
         mail_data=$(printf %s "$data" | jq -r ".[$index-1]")
         id=$(printf %s "$mail_data" | jq -r ".id")
-        from=$(printf %s "$mail_data" | jq -r ".from")
+        to=$(printf %s "$mail_data" | jq -r ".inbox")
         subject=$(printf %s "$mail_data" | jq -r ".subject")
 
         # The '||' are used as a divideder for 'column'. 'column' will use this divider as
         # a point of reference to create the division. By default 'column' uses a blank space
         # but that would not work in our case as the email subject could have multiple white spaces
         # and 'column' would split the words that are seperated by white space, in different columns.
-        inbox="$inbox$id ||$from ||$subject\n"
+        inbox="$inbox$id ||$to ||$subject\n"
         index=$((index + 1))
     done
 
@@ -224,19 +146,14 @@ list_emails() {
     printf "%b" "$inbox" | column -t -s "||"
 }
 
-randomize() {
-    # We could use 'shuf' and 'sort -R' but they are not a part of POSIX
-    awk 'BEGIN {srand();} {print rand(), $0}' | \
-        sort -n -k1 | cut -d' ' -f2
-}
 
 view_email() {
     # View an email by providing it's ID
     #
     # The first argument provided to this function will be the ID of the email
     # that has been received
-    email_id="$1"
-    data=$(curl -sL "$tmpmail_api_url?action=readMessage&login=$username&domain=$domain&id=$email_id")
+    inbox_id="$1"
+    data=$(call_api message/$inbox_id)
 
     # After the data is retrieved using the API, we have to check if we got any emails.
     # Luckily 1secmail's API is not complicated and returns 'Message not found' as plain text
@@ -245,55 +162,43 @@ view_email() {
     [ "$data" = "Message not found" ] && die "Message not found"
 
     # We pass the $data to 'jq' which extracts the values
-    from=$(printf %s "$data" | jq -r ".from")
-    subject=$(printf %s "$data" | jq -r ".subject")
-    html_body=$(printf %s "$data" | jq -r ".htmlBody")
+    from=$(printf %s "$data" | jq -r ".sender")
+    to=$(printf %s "$data" | jq -r ".headers.To")
+    subject=$(printf %s "$data" | jq -r ".headers.Subject")
+    html_body=$(printf %s "$data" | jq -r ".html_body")
+    text_body=$(printf %s "$data" | jq  -r ".text_body")
     attachments=$(printf %s "$data" | jq -r ".attachments | length")
-    
     # If you get an email that is in pure text, the .htmlBody field will be empty and
     # we will need to get the content from .textBody instead
-    [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r ".textBody")</pre>"
+    [ "$html_body" = "null" ] && html_body="<pre>$(printf %s "$data" | jq -r ".text_body")</pre>"
 
     # Create the HTML with all the information that is relevant and then
     # assigning that HTML to the variable html_mail. This is the best method
     # to create a multiline variable
     html_mail=$(cat <<EOF
-<pre><b>To: </b>$email_address
+<pre><b>To: </b>$to
 <b>From: </b>$from
 <b>Subject: </b>$subject</pre>
 $html_body
 
 EOF
 )
-    
-    if [ ! "$attachments" = "0" ]; then
-        html_mail="$html_mail<br><b>[Attachments]</b><br>"
 
-        index=1
-        while [ "$index" -le "$attachments" ]; do
-            filename=$(printf %s "$data" | jq -r ".attachments | .[$index-1] | .filename")
-            link="$tmpmail_api_url?action=download&login=$username&domain=$domain&id=$email_id&file=$filename"
-            html_link="<a href=$link download=$filename>$filename</a><br>"
-
-            if [ "$raw_text" = true ]; then
-                # The actual url is way too long and does not look so nice in STDOUT.
-                # Therefore we will shortening it using is.gd so that it looks nicer.
-                link=$(curl -s -F"url=$link" "https://is.gd/create.php?format=simple")
-                html_mail="$html_mail$link  [$filename]<br>"
-            else
-                html_mail="$html_mail$html_link"
-            fi
-
-            index=$((index + 1))
-        done
-    fi
 
     # Save the $html_mail into $tmpmail_html_email
     printf %s "$html_mail" >"$tmpmail_html_email"
 
     # If the '--text' flag is used, then use 'w3m' to convert the HTML of
     # the email to pure text by removing all the HTML tags
-    [ "$raw_text" = true ] && w3m -dump "$tmpmail_html_email" && exit
+    if [ "$raw_text" = true ]; then
+	    if [ "$text_body" = "null" ]; then
+		    w3m -dump $tmpmail_html_email
+	    else  
+		    text_mail="To: $to\nFrom: $from\nSubject: $subject\n$text_body"
+		    echo -e "$text_mail"
+	    fi
+	    exit
+    fi
 
     # Open up the HTML file using $browser. By default,
     # this will be 'w3m'.
@@ -308,14 +213,23 @@ view_recent_email() {
     # normally see on the terminal when running 'tmpmail'.
     # We then grab the ID of the most recent
     # email, which the first line.
-    mail_id=$(list_emails | head -3 | tail -1 | cut -d' ' -f 1)
-    view_email "$mail_id"
+    inbox_id=$(list_emails | head -1 | cut -d' ' -f 1)
+    echo $inbox_id
+    view_email "$inbox_id"
 }
 
-
-copy_email_to_clipboard(){
-    # Copy the email thats being used to the user's clipboard
-    $copy_to_clipboard_cmd < $tmpmail_email_address
+activation_code(){
+    #Use regex to detect activation code from email
+    #Skip 4 lines from recent email to get msg boxy
+    raw_text=true
+    text=$(view_recent_email | tail -n +5)
+    if [[ "$text" =~ ([A-Z,0-9]{4,}) ]]; then
+	    code=${BASH_REMATCH[1]}
+	    echo "$code" | $copy_to_clipboard_cmd 
+	    echo "Activation code $code copied to clipboard"
+    else
+	    echo "Could not detect activation code"
+    fi 
 }
 
 
@@ -361,18 +275,6 @@ main() {
     # if it already exists
     mkdir -p "$tmpmail_dir"
 
-    # Get the email address and save the value to the email_address variable
-    email_address="$(get_email_address)"
-
-    # ${VAR#PATTERN} Removes shortest match of pattern from start of a string.
-    # In this case, it takes the email_address and removed everything after
-    # the '@' symbol which gives us the username.
-    username=${email_address%@*}
-
-    # ${VAR%PATTERN} Remove shortest match of pattern from end of a string.
-    # In this case, it takes the email_address and removes everything until the
-    # period '.' which gives us the domain
-    domain=${email_address#*@}
 
     # If no arguments are provided just the emails
     [ $# -eq 0 ] && list_emails && exit
@@ -380,10 +282,10 @@ main() {
     while [ "$1" ]; do
         case "$1" in
             --help | -h) usage && exit ;;
-            --domains | -d) show_list_of_domains && exit ;;
-            --generate | -g) generate_email_address true "$2" && exit ;;
-            --clipboard-cmd) copy_to_clipboard_cmd="$2" ;;
-            --copy | -c) copy_email_to_clipboard && exit ;;
+            --list | -l) list_inboxes && exit ;;
+            --generate | -g) generate_inbox  && exit ;;
+	    --clipboard-cmd) copy_to_clipboard_cmd="$2" ;;
+            --acode | -a) activation_code  && exit ;;
             --browser | -b) browser="$2" ;;
             --text | -t) raw_text=true ;;
             --version) echo "$version" && exit ;;
