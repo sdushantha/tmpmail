@@ -1,4 +1,4 @@
-.Dd 2020-10-01
+.Dd 2026-10-06
 .Dt tmpmail 1
 .Os
 .Sh NAME
@@ -9,21 +9,24 @@
 .Nm
 .Fl h | -version
 .Nm
-.Fl g Op Ar ADDRESS
+.Op Fl p Ar PROVIDER
+.Fl g Op Ar ADDRESS | USERNAME
 .Nm
 .Op Fl t | b Ar BROWSER
 .Fl r | Ar ID
 .Sh DESCRIPTION
 .Nm
-is a command line utility written in POSIX shell that allows you to create a temporary email address and receive emails to the temporary email address. It uses 1secmail's API to receive emails.
+is a command line utility written in POSIX shell that allows you to create a temporary email address and receive emails to the temporary email address. It receives emails through the Guerrilla Mail API, or the mail.tm API when selected with
+.Fl p .
 .Ss Options and Arguments
 When called with no option and no argument,
 .Nm
-lists the messages in the inbox and their numeric IDs.
+lists the messages in the inbox and their numbers.
 When called with one argument,
 .Nm
-shows the email message with specified
-.Ar ID .
+shows the email message with that number
+.Ar ID ,
+where 1 is the newest.
 .Bl -tag -width Ds
 .It Fl b , Fl Fl browser Ar BROWSER
 Specify
@@ -32,16 +35,44 @@ Specify
 .It Fl Fl clipboard-cmd Ar COMMAND
 Specify the COMMAND to use for copying the email address to your
 clipboard (default: xclip -selection c)
-.It Fl g , Fl Fl generate Op Ar ADDRESS
+.It Fl c , Fl Fl copy
+Copy the email address to your clipboard
+.It Fl d , Fl Fl domains
+Show list of available domains
+.It Fl g , Fl Fl generate Op Ar ADDRESS | USERNAME
 Generate a new email address, either the specified
 .Ar ADDRESS ,
-or randomly create one
+a
+.Ar USERNAME
+on a random domain, or a completely random one
 .It Fl h , Fl Fl help
 Show help
+.It Fl p , Fl Fl provider Ar PROVIDER
+Service used for new addresses:
+.Cm guerrilla
+(default) or
+.Cm mailtm .
+Can also be set with the
+.Ev TMPMAIL_PROVIDER
+environment variable.
+An existing address keeps the provider it was made with.
 .It Fl r , Fl Fl recent
 View the most recent email message
 .It Fl t , Fl Fl text
 View the email as raw text, where all the HTML tags are removed.  Without this option, HTML is used.
 .It Fl Fl version
 Show version
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width Ds
+.It Ev TMPMAIL_PROVIDER
+Default provider for new addresses,
+.Cm guerrilla
+or
+.Cm mailtm .
+.El
+.Sh FILES
+.Bl -tag -width Ds
+.It Pa /tmp/tmpmail
+The current address, its provider, the mail.tm password, the last viewed email and downloaded attachments.
 .El

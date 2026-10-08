@@ -1,55 +1,46 @@
 #!/usr/bin/env sh
 #
 # by Siddharth Dushantha 2020
+# fork: https://github.com/3-mmc/tmpmail
+#
+# The 1secmail API this was built on shut down (every request returns 403),
+# so tmpmail now speaks to one of these providers:
+#
+#   guerrilla  Guerrilla Mail (default): no account, many domains, mails are
+#              deleted after an hour
+#   mailtm     mail.tm: real account behind each address, account creation
+#              is rate limited
+#
+# Message IDs are short inbox numbers (1 = newest).
 #
 # Dependencies: jq, curl, w3m
 #
 
-version=1.2.3
+version=1.3.0
 
-# By default 'tmpmail' uses 'w3m' as it's web browser to render
-# the HTML of the email
 browser="w3m"
-
-# The default command that will be used to copy the email address to
-# the user's clipboard when running 'tmpmail --copy'
 copy_to_clipboard_cmd="xclip -selection c"
-
-# If the value is set to 'true' tmpmail will convert the HTML email
-# to raw text and send that to stdout
 raw_text=false
+provider=${TMPMAIL_PROVIDER:-guerrilla}
 
-# Everything related to 'tmpmail' will be stored in /tmp/tmpmail
-# so that the old emails and email addresses get cleared after
-# restarting the computer
+# Kept under /tmp on purpose: the address and its mails vanish on reboot
 tmpmail_dir="/tmp/tmpmail"
-
-# tmpmail_email_address is where we store the temporary email address
-# that gets generated. This prevents the user from providing
-# the email address everytime they run tmpmail
 tmpmail_email_address="$tmpmail_dir/email_address"
-
-# tmpmail.html is where the email gets stored.
-# Even though the file ends with a .html extension, the raw text version of
-# the email will also be stored in this file so that w3m and other browsers
-# are able to open this file
+tmpmail_provider="$tmpmail_dir/provider"
+tmpmail_password="$tmpmail_dir/password"
 tmpmail_html_email="$tmpmail_dir/tmpmail.html"
-
-# Default 1secmail API URL
-tmpmail_api_url="https://www.1secmail.com/api/v1/"
+tmpmail_attachments="$tmpmail_dir/attachments"
 
 usage() {
-    # Using 'cat << EOF' we can easily output a multiline text. This is much
-    # better than using 'echo' for each line or using '\n' to create a new line.
     cat <<EOF
 tmpmail
 tmpmail -h | --version
-tmpmail -g [ADDRESS]
+tmpmail [-p PROVIDER] -g [ADDRESS | USERNAME]
 tmpmail [-t | -b BROWSER] -r | ID
 
 When called with no option and no argument, tmpmail lists the messages in
-the inbox and their numeric IDs.  When called with one argument, tmpmail
-shows the email message with specified ID.
+the inbox and their numbers.  When called with one argument, tmpmail
+shows the email message with that number (1 = newest).
 
 -b, --browser BROWSER
         Specify BROWSER that is used to render the HTML of
@@ -61,11 +52,15 @@ shows the email message with specified ID.
         Copy the email address to your clipboard
 -d, --domains
         Show list of available domains
--g, --generate [ADDRESS]
-        Generate a new email address, either the specified ADDRESS, or
-        randomly create one
+-g, --generate [ADDRESS | USERNAME]
+        Generate a new email address, either the specified ADDRESS, a
+        USERNAME on a random domain, or a completely random one
 -h, --help
         Show help
+-p, --provider PROVIDER
+        Service used for new addresses: guerrilla (default) or mailtm.
+        Can also be set with TMPMAIL_PROVIDER. An existing address keeps
+        the provider it was made with.
 -r, --recent
         View the most recent email message
 -t, --text
@@ -76,187 +71,224 @@ shows the email message with specified ID.
 EOF
 }
 
-get_list_of_domains() {
-    # Getting domains list from 1secmail API
-    data=$(curl -sL "$tmpmail_api_url?action=getDomainList") 
-
-    # Number of available domains
-    data_length=$(printf %s "$data" | jq length)
-
-    # If the length of the data we got is 0, that means the email address
-    # has not received any emails yet.
-    [ "$data_length" -eq 0 ] && echo "1secmail API error for getting domains list" && exit
-
-    # Getting rid of quotes, braces and replace comma with space
-    printf "%s" "$data" | tr -d "[|]|\"" | tr "," " "
+die() {
+    printf "%b\n" "Error: $1" >&2
+    exit 1
 }
 
-show_list_of_domains() {
-    # Convert the list of domains which are in a singal line, into multiple lines
-    # with a dash in the beginning of each domain for a clean output
-    domains=$(printf "%s" "$(get_list_of_domains)" | tr " " "\n" | sed "s/^/- /g")
-    printf "List of available domains: \n%s\n" "$domains"
+# http METHOD URL [JSON_BODY] -- prints the response body, dies on HTTP errors.
+# Sends $auth_header when set.
+http() {
+    method=$1 url=$2 body=$3
+    set -- -sS -X "$method" -H "Accept: application/json" -w '\n%{http_code}'
+    [ -n "$auth_header" ] && set -- "$@" -H "$auth_header"
+    [ -n "$body" ] && set -- "$@" -H "Content-Type: application/json" --data "$body"
+    response=$(curl "$@" "$url") || die "Could not reach $provider"
+    status=$(printf %s "$response" | tail -n 1)
+    response=$(printf %s "$response" | sed '$d')
+    case "$status" in
+        2*) printf %s "$response" ;;
+        *)
+            reason=$(printf %s "$response" | jq -r '.violations[0].message // ."hydra:description" // .message // empty' 2>/dev/null)
+            die "$provider returned HTTP $status${reason:+: $reason}"
+            ;;
+    esac
 }
 
-generate_email_address() {
-    # There are 2 ways which this function is called in this script.
-    #  [1] The user wants to generate a new email and runs 'tmpmail --generate'
-    #  [2] The user runs 'tmpmail' to check the inbox , but /tmp/tmpmail/email_address
-    #      is empty or nonexistant. Therefore a new email gets automatically
-    #      generated before showing the inbox. But of course the inbox will
-    #      be empty as the newly generated email address has not been
-    #      sent any emails.
-    #
-    # When the function 'generate_email_address()' is called with the arguement
-    # 'true', it means that the function was called because the user
-    # ran 'tmpmail --generate'.
-    #
-    # We need this variable so we can know whether or not we need to show the user
-    # what the email was. <-- More about this can be found further down in this function.
-    externally=${1:-false}
-
-    # This variable lets generate_email_address know if the user has provided a custom
-    # email address which they want to use. custom is set to false if $2 has no value.
-    custom=${2:-false}
-
-    # Generate a random email address.
-    # This function is called whenever the user wants to generate a new email
-    # address by running 'tmpmail --generate' or when the user runs 'tmpmail'
-    # but /tmp/tmpmail/email_address is empty or nonexistent.
-    #
-    # We create a random username by taking the first 10 lines from /dev/random
-    # and delete all the characters which are *not* lower case letters from A to Z.
-    # So charcters such as dashes, periods, underscore, and numbers are all deleted,
-    # giving us a text which only contains lower case letters form A to Z. We then take
-    # the first 10 characters, which will be the username of the email address
-    username=$(head /dev/urandom | LC_ALL=C tr -dc "[:alnum:]" | cut -c1-11 | tr "[:upper:]" "[:lower:]")
-
-    # Generate a regex for valif email adress by fetching the list of supported domains
-    valid_email_address_regex=$(printf "[a-z0-9]+@%s" "$(get_list_of_domains | tr ' ' '|')")
-    username_black_list_regex="(abuse|webmaster|contact|postmaster|hostmaster|admin)"
-    username_black_list="- abuse\n- webmaster\n- contact\n- postmaster\n- hostmaster\n- admin"
-
-    # Randomly pick one of the domains mentioned above.
-    domain=$(printf "%b" "$(get_list_of_domains)" | tr " " "\n" | randomize | tail -1)
-
-    email_address="$username@$domain"
-
-    # If the user provided a custom email address then use that email address
-    if [ "$custom" != false ]; then
-        email_address=$custom
-
-        # Check if the user is using username in the email address which appears
-        # in the black list.
-        if printf %b "$email_address" | grep -Eq "$username_black_list_regex"; then
-            die "For security reasons, that username cannot be used. Here are the blacklisted usernames:\n$username_black_list"
-        fi
-
-        # Do a regex check to see if the email address provided by the user is a
-        # valid email address
-        if ! printf %b "$email_address" | grep -Eq "$valid_email_address_regex"; then
-            die "Provided email is invalid. Must match $valid_email_address_regex"
-        fi
-    fi
-
-    # Save the generated email address to the $tmpmail_email_address file
-    # so that it can be whenever 'tmpmail' is run
-    printf %s "$email_address" >"$tmpmail_email_address"
-
-    # If this function was called because the user wanted to generate a new
-    # email address, show them the email address
-    [ "$externally" = true ] && cat "$tmpmail_email_address" && printf "\n"
-}
-
-get_email_address() {
-    # This function is only called once and that is when this script
-    # get executed. The output of this function gets stored in $email_address
-    #
-    # If the file that contains the email address is empty,
-    # that means we do not have an email address, so generate one.
-    [ ! -s "$tmpmail_email_address" ] && generate_email_address
-
-    # Output the email address by getting the first line of $tmpmail_email
-    head -n 1 "$tmpmail_email_address"
-}
-
-list_emails() {
-    # List all the received emails in a nicely formatted order
-    #
-    # Fetch the email data using 1secmail's API
-    data=$(curl -sL "$tmpmail_api_url?action=getMessages&login=$username&domain=$domain")
-
-    # Using 'jq' we get the length of the JSON data. From this we can determine whether or not
-    # the email address has gotten any emails
-    data_length=$(printf %s "$data" | jq length)
-
-    # We are showing what email address is currently being used
-    # in case the user has forgotten what the email address was.
-    printf "[ Inbox for %s ]\n\n" "$email_address"
-
-    # If the length of the data we got is 0, that means the email address
-    # has not received any emails yet.
-    [ "$data_length" -eq 0 ] && echo "No new mail" && exit
-
-    # This is where we store all of our emails, which is then
-    # displayed using 'column'
-    inbox=""
-
-    # Go through each mail that has been received
-    index=1
-    while [ $index -le "${data_length}" ]; do
-        # Since arrays in JSON data start at 0, we must subtract
-        # the value of $index by 1 so that we dont miss one of the
-        # emails in the array
-        mail_data=$(printf %s "$data" | jq -r ".[$index-1]")
-        id=$(printf %s "$mail_data" | jq -r ".id")
-        from=$(printf %s "$mail_data" | jq -r ".from")
-        subject=$(printf %s "$mail_data" | jq -r ".subject")
-
-        # The '||' are used as a divideder for 'column'. 'column' will use this divider as
-        # a point of reference to create the division. By default 'column' uses a blank space
-        # but that would not work in our case as the email subject could have multiple white spaces
-        # and 'column' would split the words that are seperated by white space, in different columns.
-        inbox="$inbox$id ||$from ||$subject\n"
-        index=$((index + 1))
-    done
-
-    # Show the emails cleanly
-    printf "%b" "$inbox" | column -t -s "||"
+random_string() {
+    head -c 200 /dev/urandom | LC_ALL=C tr -dc "$1" | cut -c1-"$2"
 }
 
 randomize() {
-    # We could use 'shuf' and 'sort -R' but they are not a part of POSIX
-    awk 'BEGIN {srand();} {print rand(), $0}' | \
-        sort -n -k1 | cut -d' ' -f2
+    awk 'BEGIN {srand();} {print rand(), $0}' | sort -n -k1 | cut -d' ' -f2
+}
+
+html_escape() {
+    sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'
+}
+
+# ---------------------------------------------------------------------------
+# Providers. Each one implements:
+#   <p>_domains            one domain per line
+#   <p>_create ADDRESS     register ADDRESS (user@domain) and print the
+#                          address the service actually assigned
+#   <p>_login              prepare $auth_header / session for the calls below
+#   <p>_list               JSON array of {id, from, subject}, newest first
+#   <p>_read ID            JSON {from, subject, html, text,
+#                          attachments: [{url, filename}]}
+# ---------------------------------------------------------------------------
+
+guerrilla_api="https://api.guerrillamail.com/ajax.php"
+
+guerrilla_domains() {
+    # Every Guerrilla Mail domain delivers into the same inbox for a username
+    printf "%s\n" guerrillamail.com guerrillamail.net guerrillamail.org \
+        guerrillamail.biz guerrillamail.de guerrillamail.info \
+        guerrillamailblock.com sharklasers.com grr.la pokemail.net spam4.me
+}
+
+guerrilla_call() {
+    http GET "$guerrilla_api?$1${sid:+&sid_token=$sid}"
+}
+
+guerrilla_create() {
+    sid=""
+    data=$(guerrilla_call "f=get_email_address") || exit 1
+    sid=$(printf %s "$data" | jq -r .sid_token)
+    data=$(guerrilla_call "f=set_email_user&email_user=${1%@*}") || exit 1
+    # The service may alter the username (it lowercases and strips symbols)
+    printf "%s@%s\n" "$(printf %s "$data" | jq -r '.email_addr | split("@")[0]')" "${1#*@}"
+}
+
+guerrilla_login() {
+    # Sessions expire after 18 idle minutes; the inbox belongs to the
+    # username, so a fresh session that claims it again sees the same mail.
+    # Not via $(...), so $sid survives for the calls that follow.
+    sid=""
+    data=$(guerrilla_call "f=get_email_address") || exit 1
+    sid=$(printf %s "$data" | jq -r .sid_token)
+    guerrilla_call "f=set_email_user&email_user=${email_address%@*}" >/dev/null || exit 1
+}
+
+guerrilla_list() {
+    data=$(guerrilla_call "f=get_email_list&offset=0") || exit 1
+    printf %s "$data" | jq -c '[.list[] | {id: .mail_id, from: .mail_from,
+        subject: (.mail_subject | gsub("&#0?39;"; "'"'"'") | gsub("&quot;"; "\"") | gsub("&lt;"; "<") | gsub("&gt;"; ">") | gsub("&amp;"; "&"))}]
+        | sort_by(.id | tonumber) | reverse'
+}
+
+guerrilla_read() {
+    data=$(guerrilla_call "f=fetch_email&email_id=$1") || exit 1
+    printf %s "$data" | jq -c --arg sid "$sid" --arg id "$1" '{
+        from: .mail_from, subject: .mail_subject, html: .mail_body, text: "",
+        attachments: [(.att_info // [])[] |
+            {filename: (.f // "attachment"),
+             url: "https://www.guerrillamail.com/inbox?get_att&email_id=\($id)&part_id=\(.p)&sid_token=\($sid)"}]}'
+}
+
+mailtm_api="https://api.mail.tm"
+
+# mail.tm answers a bare array for application/json lists; also accept a
+# hydra collection in case that ever changes
+mailtm_members='def members: if type == "array" then . else ."hydra:member" end;'
+
+mailtm_domains() {
+    data=$(http GET "$mailtm_api/domains") || exit 1
+    printf %s "$data" | jq -r "$mailtm_members"' members[] | select(.isActive) | .domain'
+}
+
+mailtm_create() {
+    password=$(random_string 'A-Za-z0-9' 24)
+    http POST "$mailtm_api/accounts" "{\"address\":\"$1\",\"password\":\"$password\"}" >/dev/null || exit 1
+    (umask 077 && printf %s "$password" >"$tmpmail_password")
+    printf "%s\n" "$1"
+}
+
+mailtm_login() {
+    [ -s "$tmpmail_password" ] || die "Password for $email_address is missing, run 'tmpmail -g'"
+    data=$(http POST "$mailtm_api/token" "{\"address\":\"$email_address\",\"password\":\"$(cat "$tmpmail_password")\"}") || exit 1
+    auth_header="Authorization: Bearer $(printf %s "$data" | jq -r .token)"
+}
+
+mailtm_list() {
+    data=$(http GET "$mailtm_api/messages") || exit 1
+    printf %s "$data" | jq -c "$mailtm_members"' [members[] | {id, from: .from.address, subject}]'
+}
+
+mailtm_read() {
+    data=$(http GET "$mailtm_api/messages/$1") || exit 1
+    printf %s "$data" | jq -c --arg api "$mailtm_api" '{
+        from: (.from | if .name != "" then "\(.name) <\(.address)>" else .address end),
+        subject, html: ((.html // []) | join("")), text: (.text // ""),
+        attachments: [(.attachments // [])[] | {filename, url: "\($api)\(.downloadUrl)"}]}'
+}
+
+# ---------------------------------------------------------------------------
+
+check_provider() {
+    case "$provider" in
+        guerrilla | mailtm) ;;
+        *) die "Unknown provider '$provider'. Use guerrilla or mailtm." ;;
+    esac
+}
+
+show_list_of_domains() {
+    domains=$("${provider}_domains") || exit 1
+    printf "List of available %s domains: \n%s\n" "$provider" "$(printf %s "$domains" | sed "s/^/- /")"
+}
+
+generate_email_address() {
+    externally=${1:-false}
+    custom=${2:-false}
+
+    domains=$("${provider}_domains") || exit 1
+    [ -z "$domains" ] && die "$provider has no domains available right now"
+
+    if [ "$custom" != false ]; then
+        email_address=$(printf %s "$custom" | tr "[:upper:]" "[:lower:]")
+        # A bare username gets a random domain
+        case "$email_address" in
+            *@*) ;;
+            *) email_address="$email_address@$(printf %s "$domains" | randomize | tail -1)" ;;
+        esac
+        valid_email_address_regex="^[a-z0-9._-]+@($(printf %s "$domains" | sed 's/\./\\./g' | tr '\n' '|'))$"
+        printf %s "$email_address" | grep -Eq "$valid_email_address_regex" ||
+            die "Provided email is invalid. The domain must be one of:\n$(printf %s "$domains" | sed 's/^/- /')"
+    else
+        domain=$(printf %s "$domains" | randomize | tail -1)
+        email_address="$(random_string 'a-z0-9' 11)@$domain"
+    fi
+
+    email_address=$("${provider}_create" "$email_address") || exit 1
+
+    printf %s "$email_address" >"$tmpmail_email_address"
+    printf %s "$provider" >"$tmpmail_provider"
+
+    if [ "$externally" = true ]; then
+        printf "%s\n" "$email_address"
+    fi
+}
+
+load_email_address() {
+    # Addresses from before the provider switch have no provider file and
+    # belong to the dead 1secmail or an older mail.tm port, so start over
+    if [ ! -s "$tmpmail_email_address" ] || [ ! -s "$tmpmail_provider" ]; then
+        (generate_email_address) || exit 1
+    fi
+    email_address=$(head -n 1 "$tmpmail_email_address")
+    provider=$(cat "$tmpmail_provider")
+    check_provider
+}
+
+fetch_messages() {
+    messages=$("${provider}_list") || exit 1
+}
+
+list_emails() {
+    fetch_messages
+    printf "[ Inbox for %s ]\n\n" "$email_address"
+
+    [ "$(printf %s "$messages" | jq length)" -eq 0 ] && echo "No new mail" && exit
+
+    printf %s "$messages" |
+        jq -r 'to_entries[] | "\(.key + 1) ||\(.value.from) ||\(.value.subject)"' |
+        column -t -s "||"
 }
 
 view_email() {
-    # View an email by providing it's ID
-    #
-    # The first argument provided to this function will be the ID of the email
-    # that has been received
-    email_id="$1"
-    data=$(curl -sL "$tmpmail_api_url?action=readMessage&login=$username&domain=$domain&id=$email_id")
+    fetch_messages
+    email_id=$(printf %s "$messages" | jq -r --argjson n "$1" '.[$n - 1].id // empty')
+    [ -z "$email_id" ] && die "Message not found"
 
-    # After the data is retrieved using the API, we have to check if we got any emails.
-    # Luckily 1secmail's API is not complicated and returns 'Message not found' as plain text
-    # if our email address as not received any emails.
-    # If we received the error message from the API just quit because there is nothing to do
-    [ "$data" = "Message not found" ] && die "Message not found"
+    data=$("${provider}_read" "$email_id") || exit 1
 
-    # We pass the $data to 'jq' which extracts the values
-    from=$(printf %s "$data" | jq -r ".from")
-    subject=$(printf %s "$data" | jq -r ".subject")
-    html_body=$(printf %s "$data" | jq -r ".htmlBody")
-    attachments=$(printf %s "$data" | jq -r ".attachments | length")
-    
-    # If you get an email that is in pure text, the .htmlBody field will be empty and
-    # we will need to get the content from .textBody instead
-    [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r ".textBody")</pre>"
+    from=$(printf %s "$data" | jq -r .from | html_escape)
+    # Guerrilla Mail already sends the subject HTML-escaped
+    subject=$(printf %s "$data" | jq -r .subject)
+    [ "$provider" = mailtm ] && subject=$(printf %s "$subject" | html_escape)
+    html_body=$(printf %s "$data" | jq -r .html)
+    [ -z "$html_body" ] && html_body="<pre>$(printf %s "$data" | jq -r .text | html_escape)</pre>"
 
-    # Create the HTML with all the information that is relevant and then
-    # assigning that HTML to the variable html_mail. This is the best method
-    # to create a multiline variable
     html_mail=$(cat <<EOF
 <pre><b>To: </b>$email_address
 <b>From: </b>$from
@@ -265,136 +297,80 @@ $html_body
 
 EOF
 )
-    
-    if [ ! "$attachments" = "0" ]; then
+
+    # Attachments may need the session, so fetch them now and link local files
+    attachments=$(printf %s "$data" | jq -r '.attachments[] | "\(.url)\t\(.filename)"')
+    if [ -n "$attachments" ]; then
         html_mail="$html_mail<br><b>[Attachments]</b><br>"
-
-        index=1
-        while [ "$index" -le "$attachments" ]; do
-            filename=$(printf %s "$data" | jq -r ".attachments | .[$index-1] | .filename")
-            link="$tmpmail_api_url?action=download&login=$username&domain=$domain&id=$email_id&file=$filename"
-            html_link="<a href=$link download=$filename>$filename</a><br>"
-
+        mkdir -p "$tmpmail_attachments/$email_id"
+        tab=$(printf '\t')
+        while IFS="$tab" read -r url filename; do
+            filename=$(basename "$filename")
+            file="$tmpmail_attachments/$email_id/$filename"
+            set -- -sS -o "$file"
+            [ -n "$auth_header" ] && set -- "$@" -H "$auth_header"
+            curl "$@" "$url"
             if [ "$raw_text" = true ]; then
-                # The actual url is way too long and does not look so nice in STDOUT.
-                # Therefore we will shortening it using is.gd so that it looks nicer.
-                link=$(curl -s -F"url=$link" "https://is.gd/create.php?format=simple")
-                html_mail="$html_mail$link  [$filename]<br>"
+                html_mail="$html_mail$file<br>"
             else
-                html_mail="$html_mail$html_link"
+                html_mail="$html_mail<a href=\"file://$file\">$filename</a><br>"
             fi
-
-            index=$((index + 1))
-        done
+        done <<EOF
+$attachments
+EOF
     fi
 
-    # Save the $html_mail into $tmpmail_html_email
     printf %s "$html_mail" >"$tmpmail_html_email"
 
-    # If the '--text' flag is used, then use 'w3m' to convert the HTML of
-    # the email to pure text by removing all the HTML tags
-    [ "$raw_text" = true ] && w3m -dump "$tmpmail_html_email" && exit
+    [ "$raw_text" = true ] && w3m -dump -T text/html "$tmpmail_html_email" && exit
 
-    # Open up the HTML file using $browser. By default,
-    # this will be 'w3m'.
     $browser "$tmpmail_html_email"
 }
 
-
-view_recent_email() {
-    # View the most recent email.
-    #
-    # This is done by listing all the received email like you
-    # normally see on the terminal when running 'tmpmail'.
-    # We then grab the ID of the most recent
-    # email, which the first line.
-    mail_id=$(list_emails | head -3 | tail -1 | cut -d' ' -f 1)
-    view_email "$mail_id"
-}
-
-
-copy_email_to_clipboard(){
-    # Copy the email thats being used to the user's clipboard
-    $copy_to_clipboard_cmd < $tmpmail_email_address
-}
-
-
-die() {
-    # Print error message and exit
-    #
-    # The first argument provided to this function will be the error message.
-    # Script will exit after printing the error message.
-    printf "%b\n" "Error: $1" >&2
-    exit 1
+copy_email_to_clipboard() {
+    # Checked here rather than in main() so the clipboard tool is only
+    # required by --copy, and --clipboard-cmd has already been parsed
+    command -v "${copy_to_clipboard_cmd%% *}" >/dev/null 2>&1 ||
+        die "Could not find the following dependencies: ${copy_to_clipboard_cmd%% *}"
+    $copy_to_clipboard_cmd <"$tmpmail_email_address"
 }
 
 main() {
-    # Iterate of the array of dependencies and check if the user has them installed.
-    # We are checking if $browser is installed instead of checking for 'w3m'. By doing
-    # this, it allows the user to not have to install 'w3m' if they are using another
-    # browser to view the HTML.
-    #
-    # dep_missing allows us to keep track of how many dependencies the user is missing
-    # and then print out the missing dependencies once the checking is done.
     dep_missing=""
-
-    # The main command from $copy_to_clipboard_cmd
-    # Example:
-    #   xclip -selection c
-    #   ├───┘
-    #   └ This part
-    clipboard=${copy_to_clipboard_cmd%% *}
-
-    for dependency in jq $browser $clipboard curl; do
-        if ! command -v "$dependency" >/dev/null 2>&1; then
-            # Append to our list of missing dependencies
-            dep_missing="$dep_missing $dependency"
-        fi
+    for dependency in jq $browser curl; do
+        command -v "$dependency" >/dev/null 2>&1 || dep_missing="$dep_missing $dependency"
     done
+    [ "${#dep_missing}" -gt 0 ] && die "Could not find the following dependencies:$dep_missing"
 
-    if [ "${#dep_missing}" -gt 0 ]; then
-        printf %s "Could not find the following dependencies:$dep_missing"
-        exit 1
-    fi
-
-    # Create the $tmpmail_dir directory and dont throw any errors
-    # if it already exists
     mkdir -p "$tmpmail_dir"
 
-    # Get the email address and save the value to the email_address variable
-    email_address="$(get_email_address)"
+    # Options that don't need an existing address
+    while [ "$1" ]; do
+        case "$1" in
+            --help | -h) usage && exit ;;
+            --version) echo "$version" && exit ;;
+            --provider | -p) provider="$2"; shift ;;
+            --domains | -d) check_provider && show_list_of_domains && exit ;;
+            --generate | -g) check_provider && generate_email_address true "$2" && exit ;;
+            *) break ;;
+        esac
+        shift
+    done
 
-    # ${VAR#PATTERN} Removes shortest match of pattern from start of a string.
-    # In this case, it takes the email_address and removed everything after
-    # the '@' symbol which gives us the username.
-    username=${email_address%@*}
+    load_email_address
+    "${provider}_login"
 
-    # ${VAR%PATTERN} Remove shortest match of pattern from end of a string.
-    # In this case, it takes the email_address and removes everything until the
-    # period '.' which gives us the domain
-    domain=${email_address#*@}
-
-    # If no arguments are provided just the emails
     [ $# -eq 0 ] && list_emails && exit
 
     while [ "$1" ]; do
         case "$1" in
-            --help | -h) usage && exit ;;
-            --domains | -d) show_list_of_domains && exit ;;
-            --generate | -g) generate_email_address true "$2" && exit ;;
-            --clipboard-cmd) copy_to_clipboard_cmd="$2" ;;
+            --clipboard-cmd) copy_to_clipboard_cmd="$2"; shift ;;
             --copy | -c) copy_email_to_clipboard && exit ;;
-            --browser | -b) browser="$2" ;;
+            --browser | -b) browser="$2"; shift ;;
             --text | -t) raw_text=true ;;
-            --version) echo "$version" && exit ;;
-            --recent | -r) view_recent_email && exit ;;
-            *[0-9]*)
-                # If the user provides number as an argument,
-                # assume its the ID of an email and try getting
-                # the email that belongs to the ID
-                view_email "$1" && exit
-                ;;
-            -*) die "option '$1' does not exist" ;;
+            --recent | -r) view_email 1 && exit ;;
+            *[!0-9]*) die "'$1' is not an option or a message number" ;;
+            *) view_email "$1" && exit ;;
         esac
         shift
     done
